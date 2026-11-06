@@ -31,7 +31,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph, Table, TableStyle
 
-VERSION = "1.3.7"
+VERSION = "1.4.0"
 ETAX = "https://new.e-taxes.gov.az"
 REYESTR_URL = ETAX + "/api/po/authless/public/v1/authless/findTaxpayer"
 KESH_FAYLI = "direktorlar.json"
@@ -53,6 +53,7 @@ STATUS_AZ = {
 
 # --------------------------------------------------------------------------- ayarlar
 VARSAYILAN = {
+    "pencere": False,  # True olarsa, proqram açılışda pəncərə rejimini göstərir
     "yenileme_url": "",  # məs. https://raw.githubusercontent.com/SIZIN_AD/tta/main  (version.txt, tta_proqrami.py, ayarlar.json)
     "sheher": "Bakı şəhəri",
     "giris_sablon": ("Biz, aşağıda imza edənlər, Satıcı {satici} (VÖEN {satici_voen}) və Alıcı {alici} (VÖEN {alici_voen}), "
@@ -880,6 +881,7 @@ def etaxes_rejimi(a, cixis):
         dan, ya = f"01-01-{bu.year}", bu.strftime("%d-%m-%Y")
     istiqametler = {"gelen": [("inbox", "Gələn")], "gonderilen": [("outbox", "Göndərilən")]}.get(
         a.istiqamet, [("inbox", "Gələn"), ("outbox", "Göndərilən")])
+    print("Chrome açılır. Orada Asan İmza / SİMA ilə daxil olun (pəncərəni bağlamayın, 10 dəqiqəyə qədər gözləyirəm)...")
     cl = ETaxes(etaxes_token())
     qaimeler, ugursuz = [], []
 
@@ -898,6 +900,8 @@ def etaxes_rejimi(a, cixis):
         time.sleep(0.2)
 
     for kod, ad in istiqametler:
+        if _dayandi():
+            break
         sira = cl.siyahi(kod, dan, ya)
         if a.nomre:
             sira = [x for x in sira if x.get("serialNumber") in a.nomre]
@@ -905,12 +909,15 @@ def etaxes_rejimi(a, cixis):
             sira = [x for x in sira if _tarix_tap(x) is None or aralidadir(_tarix_tap(x), dan, ya)]
         print(f"{ad} qaimələr ({dan} - {ya}): {len(sira)} ədəd")
         for i, x in enumerate(sira, 1):
+            if _dayandi():
+                print("Dayandırıldı.")
+                break
             try:
                 isle(x, ad, i, len(sira))
             except Exception as e:
                 print(f"! {x.get('serialNumber')}: götürülmədi ({str(e)[:90]})")
                 ugursuz.append((x, ad, i, len(sira)))
-    if ugursuz:
+    if ugursuz and not _dayandi():
         print(f"\n{len(ugursuz)} qaimə götürülə bilmədi. 15 saniyə sonra bir də cəhd edirəm...")
         time.sleep(15)
         qalan = []
@@ -964,6 +971,315 @@ def menyu(a):
     return a
 
 
+DAYAN = None  # pəncərə rejimində "Dayandır" düyməsi üçün (threading.Event)
+
+
+def _dayandi():
+    return DAYAN is not None and DAYAN.is_set()
+
+
+def isle_ve_yaz(a):
+    """Seçilmiş rejimdə qaimələri işlə və nəticəni cixis qovluğuna yaz (konsol və pəncərə rejimi üçün ortaq)."""
+    os.makedirs(a.cixis, exist_ok=True)
+    qaimeler = etaxes_rejimi(a, a.cixis) if a.etaxes else pdf_rejimi(a.giris, a.cixis, a.oflayn)
+    if qaimeler:
+        if not getattr(a, "yalniz_tta", False):
+            terkib_xlsx(os.path.join(a.cixis, "qaime_terkibi.xlsx"), qaimeler)
+        print(f"Hazırdır ({len(qaimeler)} qaimə): {os.path.abspath(a.cixis)}")
+    else:
+        print("Heç bir qaimə işlənmədi.")
+    return qaimeler
+
+
+def _konsol(goster):
+    """Windows-da qara pəncərəni gizlət / göstər (pəncərə rejimində)."""
+    try:
+        import ctypes
+        h = ctypes.windll.kernel32.GetConsoleWindow()
+        if h:
+            ctypes.windll.user32.ShowWindow(h, 5 if goster else 0)
+    except Exception:
+        pass
+
+
+def _tarix_gui(metn):
+    return datetime.datetime.strptime((metn or "").strip().replace(".", "-").replace("/", "-"), "%d-%m-%Y").date()
+
+
+def pencere_rejimi(sinaq=False):
+    """Tkinter pəncərəsi: seçimlər düymə/qutu ilə, gedişat zolağı, nəticə qovluğunu aç düyməsi."""
+    import queue, subprocess, threading
+    import tkinter as tk
+    from tkinter import filedialog, messagebox, ttk
+    global DAYAN
+    DAYAN = threading.Event()
+    try:
+        import ctypes
+        ctypes.windll.shcore.SetProcessDpiAwareness(1)
+    except Exception:
+        pass
+    kok = tk.Tk()
+    kok.title(f"TTA proqramı {VERSION}")
+    kok.geometry("860x740")
+    kok.minsize(760, 620)
+    try:
+        ttk.Style().theme_use("vista")
+    except Exception:
+        pass
+    _konsol(False)
+
+    bu = datetime.date.today()
+    v_rejim, v_ist = tk.StringVar(value="terkib"), tk.StringVar(value="hamisi")
+    v_dan = tk.StringVar(value=bu.replace(day=1).strftime("%d.%m.%Y"))
+    v_ya = tk.StringVar(value=bu.strftime("%d.%m.%Y"))
+    v_voen, v_nomre = tk.StringVar(), tk.StringVar()
+    v_tarixce = tk.BooleanVar(value=True)
+    v_pdf = tk.StringVar(value=os.getcwd())
+    v_cixis = tk.StringVar(value=os.path.join(os.getcwd(), "cixis"))
+    v_durum = tk.StringVar(value="Hazırdır. Seçim edib \"Başla\" düyməsinə basın.")
+    q = queue.Queue()
+    veziyyet = {"isleyir": False, "stdout": None}
+    pdf_vid, etaxes_vid = [], []
+
+    def blok(valid, ad):
+        f = ttk.LabelFrame(kok, text=f" {ad} ")
+        f.pack(fill="x", padx=14, pady=6)
+        return f
+
+    # --- 1. nə hazırlansın
+    f1 = blok(kok, "1. Nə hazırlansın?")
+    for deyer, metn in (("pdf", "PDF qaimələrdən TTA hazırla"),
+                        ("terkib", "e-taxes: qaimə tərkibi (Excel)"),
+                        ("tta", "e-taxes: TTA hazırla (Excel + PDF)")):
+        ttk.Radiobutton(f1, text=metn, value=deyer, variable=v_rejim, command=lambda: gorunus()).pack(anchor="w", padx=10, pady=2)
+
+    # --- PDF
+    f2 = blok(kok, "PDF qaimələrin qovluğu")
+    e = ttk.Entry(f2, textvariable=v_pdf)
+    e.pack(side="left", fill="x", expand=True, padx=(10, 6), pady=8)
+    b = ttk.Button(f2, text="Seç...", command=lambda: v_pdf.set(filedialog.askdirectory(initialdir=v_pdf.get()) or v_pdf.get()))
+    b.pack(side="left", padx=(0, 10))
+    pdf_vid += [e, b]
+
+    # --- e-taxes
+    f3 = blok(kok, "e-taxes seçimləri")
+    sat = ttk.Frame(f3)
+    sat.pack(fill="x", padx=10, pady=(8, 2))
+    ttk.Label(sat, text="Hansı qaimələr:").pack(side="left")
+    for deyer, metn in (("hamisi", "Hamısı"), ("gelen", "Gələn"), ("gonderilen", "Göndərilən")):
+        r = ttk.Radiobutton(sat, text=metn, value=deyer, variable=v_ist)
+        r.pack(side="left", padx=8)
+        etaxes_vid.append(r)
+    sat = ttk.Frame(f3)
+    sat.pack(fill="x", padx=10, pady=2)
+    ttk.Label(sat, text="Başlanğıc tarix:").pack(side="left")
+    e1 = ttk.Entry(sat, textvariable=v_dan, width=12)
+    e1.pack(side="left", padx=(6, 14))
+    ttk.Label(sat, text="Son tarix:").pack(side="left")
+    e2 = ttk.Entry(sat, textvariable=v_ya, width=12)
+    e2.pack(side="left", padx=6)
+    ttk.Label(sat, text="(gg.aa.iiii)").pack(side="left", padx=6)
+    etaxes_vid += [e1, e2]
+
+    def aralik(d1, d2):
+        v_dan.set(d1.strftime("%d.%m.%Y"))
+        v_ya.set(d2.strftime("%d.%m.%Y"))
+
+    def kecen_ay():
+        son = bu.replace(day=1) - datetime.timedelta(days=1)
+        aralik(son.replace(day=1), son)
+
+    sat = ttk.Frame(f3)
+    sat.pack(fill="x", padx=10, pady=2)
+    for metn, fn in (("Bu ay", lambda: aralik(bu.replace(day=1), bu)), ("Keçən ay", kecen_ay),
+                     ("Son 30 gün", lambda: aralik(bu - datetime.timedelta(days=30), bu)),
+                     ("Bu il", lambda: aralik(datetime.date(bu.year, 1, 1), bu))):
+        bb = ttk.Button(sat, text=metn, command=fn)
+        bb.pack(side="left", padx=(0, 6))
+        etaxes_vid.append(bb)
+    sat = ttk.Frame(f3)
+    sat.pack(fill="x", padx=10, pady=2)
+    ttk.Label(sat, text="VÖEN (boş = hamısı):", width=24).pack(side="left")
+    e3 = ttk.Entry(sat, textvariable=v_voen)
+    e3.pack(side="left", fill="x", expand=True)
+    sat = ttk.Frame(f3)
+    sat.pack(fill="x", padx=10, pady=2)
+    ttk.Label(sat, text="Qaimə nömrələri (boş = hamısı):", width=24).pack(side="left")
+    e4 = ttk.Entry(sat, textvariable=v_nomre)
+    e4.pack(side="left", fill="x", expand=True)
+    c1 = ttk.Checkbutton(f3, text="Tarixçə, versiya, düzəliş və əlaqəli (qaytarma) qaimələri də götür (yalnız tərkib üçün; yavaşdır)",
+                         variable=v_tarixce)
+    c1.pack(anchor="w", padx=10, pady=(4, 8))
+    etaxes_vid += [e3, e4]
+
+    # --- nəticə qovluğu
+    f4 = blok(kok, "Nəticə qovluğu")
+    ttk.Entry(f4, textvariable=v_cixis).pack(side="left", fill="x", expand=True, padx=(10, 6), pady=8)
+    ttk.Button(f4, text="Seç...", command=lambda: v_cixis.set(filedialog.askdirectory(initialdir=v_cixis.get()) or v_cixis.get())).pack(side="left", padx=(0, 10))
+
+    def gorunus():
+        rj = v_rejim.get()
+        for w in pdf_vid:
+            w.state(["!disabled"] if rj == "pdf" else ["disabled"])
+        for w in etaxes_vid:
+            w.state(["!disabled"] if rj != "pdf" else ["disabled"])
+        c1.state(["!disabled"] if rj == "terkib" else ["disabled"])
+
+    # --- düymələr
+    dym = ttk.Frame(kok)
+    dym.pack(fill="x", padx=14, pady=(8, 2))
+    b_basla = ttk.Button(dym, text="Başla", command=lambda: basla())
+    b_basla.pack(side="left")
+    b_dayan = ttk.Button(dym, text="Dayandır", command=lambda: dayan())
+    b_dayan.pack(side="left", padx=8)
+    ttk.Button(dym, text="Nəticə qovluğunu aç", command=lambda: ac()).pack(side="left")
+    ttk.Label(kok, textvariable=v_durum).pack(anchor="w", padx=14, pady=(6, 0))
+    pb = ttk.Progressbar(kok, mode="determinate", maximum=100)
+    pb.pack(fill="x", padx=14, pady=4)
+    cerc = ttk.Frame(kok)
+    cerc.pack(fill="both", expand=True, padx=14, pady=(2, 12))
+    log = tk.Text(cerc, height=10, wrap="word", state="disabled")
+    sk = ttk.Scrollbar(cerc, command=log.yview)
+    log.configure(yscrollcommand=sk.set)
+    sk.pack(side="right", fill="y")
+    log.pack(side="left", fill="both", expand=True)
+
+    def yaz(metn):
+        log.configure(state="normal")
+        log.insert("end", metn)
+        log.see("end")
+        log.configure(state="disabled")
+        for sətir in metn.splitlines():
+            m = re.match(r"\s*(\d+)/(\d+)\s", sətir)
+            if m:
+                pb.configure(maximum=max(int(m.group(2)), 1), value=int(m.group(1)))
+                v_durum.set(f"{m.group(1)} / {m.group(2)} qaimə işlənib")
+            elif re.search(r"qaimələr \(.*\): \d+ ədəd", sətir):
+                pb.configure(value=0)
+                v_durum.set(sətir.strip())
+
+    class Yazici:
+        encoding = "utf-8"
+
+        def write(self, metn):
+            if metn:
+                q.put(("yaz", metn))
+            return len(metn or "")
+
+        def flush(self):
+            pass
+
+        def isatty(self):
+            return False
+
+    def bitdi():
+        veziyyet["isleyir"] = False
+        sys.stdout = veziyyet["stdout"]
+        b_basla.state(["!disabled"])
+        v_durum.set("Bitdi. Nəticə qovluğunu açıb faylları yoxlaya bilərsiniz.")
+        pb.configure(value=pb["maximum"])
+
+    def yoxla():
+        try:
+            while True:
+                nov, metn = q.get_nowait()
+                if nov == "yaz":
+                    yaz(metn)
+                elif nov == "bitdi":
+                    bitdi()
+        except queue.Empty:
+            pass
+        if not sinaq:
+            kok.after(150, yoxla)
+
+    def basla():
+        if veziyyet["isleyir"]:
+            return
+        rj = v_rejim.get()
+        a = argparse.Namespace(giris=[], etaxes=False, istiqamet="hamisi", il=None, dan=None, ya=None, nomre=None,
+                               voen=None, sade=False, tta=False, yalniz_tta=False, oflayn=False, yenile=False,
+                               pencere=True, cixis=(v_cixis.get().strip() or "cixis"))
+        if rj == "pdf":
+            yol = v_pdf.get().strip()
+            if not os.path.exists(yol):
+                messagebox.showerror("Qovluq tapılmadı", "PDF qaimələrin qovluğu tapılmadı. \"Seç...\" düyməsi ilə seçin.")
+                return
+            a.giris = [yol]
+        else:
+            try:
+                d1, d2 = _tarix_gui(v_dan.get()), _tarix_gui(v_ya.get())
+            except ValueError:
+                messagebox.showerror("Tarix səhvdir", "Tarixi bu formada yazın: 01.10.2026")
+                return
+            if d1 > d2:
+                messagebox.showerror("Tarix səhvdir", "Başlanğıc tarix son tarixdən böyük ola bilməz.")
+                return
+            a.etaxes, a.istiqamet = True, v_ist.get()
+            a.dan, a.ya = d1.strftime("%d-%m-%Y"), d2.strftime("%d-%m-%Y")
+            a.voen = v_voen.get().split() or None
+            a.nomre = [x.upper() for x in v_nomre.get().split()] or None
+            if rj == "tta":
+                a.tta = a.yalniz_tta = a.sade = True
+            else:
+                a.sade = not v_tarixce.get()
+        DAYAN.clear()
+        veziyyet["isleyir"] = True
+        veziyyet["stdout"] = sys.stdout
+        sys.stdout = Yazici()
+        b_basla.state(["disabled"])
+        log.configure(state="normal")
+        log.delete("1.0", "end")
+        log.configure(state="disabled")
+        pb.configure(value=0)
+        v_durum.set("İşləyir...")
+
+        def ish():
+            try:
+                isle_ve_yaz(a)
+            except SystemExit as ex:
+                print(f"\n! {ex.code if ex.code not in (None, 0) else 'Dayandırıldı'}")
+            except Exception as ex:
+                import traceback
+                print(f"\n! Xəta: {ex}")
+                print(traceback.format_exc()[-900:])
+            finally:
+                q.put(("bitdi", None))
+
+        th = threading.Thread(target=ish, daemon=True)
+        th.start()
+        return th
+
+    def dayan():
+        if veziyyet["isleyir"]:
+            DAYAN.set()
+            v_durum.set("Dayandırılır... (cari qaimə bitəndən sonra)")
+
+    def ac():
+        yol = os.path.abspath(v_cixis.get().strip() or "cixis")
+        os.makedirs(yol, exist_ok=True)
+        try:
+            os.startfile(yol)
+        except AttributeError:
+            subprocess.Popen(["xdg-open", yol])
+
+    def baglan():
+        if veziyyet["isleyir"] and not messagebox.askokcancel("Bağlansın?", "İş davam edir. Yenə də bağlansın?"):
+            return
+        DAYAN.set()
+        kok.destroy()
+        _konsol(True)
+
+    kok.protocol("WM_DELETE_WINDOW", baglan)
+    gorunus()
+    yaz("Seçimləri edin və \"Başla\" düyməsinə basın.\ne-taxes seçsəniz, Chrome açılacaq - orada Asan İmza / SİMA ilə daxil olun.\n")
+    if sinaq:
+        return argparse.Namespace(basla=basla, dayan=dayan, yoxla=yoxla, q=q, v_rejim=v_rejim, v_ist=v_ist, v_dan=v_dan,
+                                  v_ya=v_ya, v_voen=v_voen, v_nomre=v_nomre, v_tarixce=v_tarixce, v_pdf=v_pdf,
+                                  v_cixis=v_cixis, v_durum=v_durum, veziyyet=veziyyet, gorunus=gorunus, ac=ac)
+    kok.after(150, yoxla)
+    kok.mainloop()
+
+
 def main():
     ap = argparse.ArgumentParser(description="Qaimədən TTA və qaimə tərkibi (Excel + PDF)")
     ap.add_argument("giris", nargs="*", help="qaimə PDF faylları və ya qovluqlar")
@@ -978,21 +1294,26 @@ def main():
     ap.add_argument("--tta", action="store_true", help="e-taxes rejimində hər qaimə üçün TTA da hazırla")
     ap.add_argument("--cixis", default="cixis")
     ap.add_argument("--oflayn", action="store_true", help="reyestrə müraciət etmə")
+    ap.add_argument("--pencere", action="store_true", help="proqram pəncərəsi ilə işlə (qara pəncərə əvəzinə)")
     ap.add_argument("--yenileme-yoxla", dest="yenile", action="store_true", help="yeniləməni yoxla")
     a = ap.parse_args()
 
     ayar_yukle()
     yenile()
+    if a.pencere or (AYAR.get("pencere") and not a.giris and not a.etaxes):
+        try:
+            return pencere_rejimi()
+        except ImportError:
+            print("tkinter tapılmadı - adi (qara pəncərə) rejimi açılır.")
+        except Exception as e:
+            import traceback
+            open("hata.log", "a", encoding="utf-8").write(traceback.format_exc() + "\n")
+            print(f"Pəncərə açılmadı ({e}). Adi rejim açılır.")
+            if sys.stdin is None:
+                return
     if not a.giris and not a.etaxes:
         a = menyu(a)
-    os.makedirs(a.cixis, exist_ok=True)
-    qaimeler = etaxes_rejimi(a, a.cixis) if a.etaxes else pdf_rejimi(a.giris, a.cixis, a.oflayn)
-    if qaimeler:
-        if not getattr(a, "yalniz_tta", False):
-            terkib_xlsx(os.path.join(a.cixis, "qaime_terkibi.xlsx"), qaimeler)
-        print(f"Hazırdır ({len(qaimeler)} qaimə): {os.path.abspath(a.cixis)}")
-    else:
-        print("Heç bir qaimə işlənmədi.")
+    isle_ve_yaz(a)
 
 
 if __name__ == "__main__":
