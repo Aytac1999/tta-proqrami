@@ -31,7 +31,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph, Table, TableStyle
 
-VERSION = "1.3.5"
+VERSION = "1.3.6"
 ETAX = "https://new.e-taxes.gov.az"
 REYESTR_URL = ETAX + "/api/po/authless/public/v1/authless/findTaxpayer"
 KESH_FAYLI = "direktorlar.json"
@@ -399,7 +399,7 @@ class ETaxes:
         for _ in range(2):
             basliq = {"Accept": "application/json",
                       "x-authorization": self.token if self.var == "xam" else "Bearer " + self.token}
-            r = self.s.request(metod, ETAX + yol, headers=basliq, timeout=60, **kw)
+            r = self._gonder(metod, yol, basliq, kw)
             if r.status_code in (401, 403) and self.var == "xam":
                 self.var = "bearer"
                 continue
@@ -407,6 +407,19 @@ class ETaxes:
         if r.status_code in (401, 403):
             sys.exit("Sessiya bitib və ya giriş qəbul edilmədi. Proqramı yenidən işə salıb daxil olun.")
         return r
+
+    def _gonder(self, metod, yol, basliq, kw):
+        """İnternet qısa müddətə itərsə (DNS/timeout), bir neçə dəfə gözləyib təkrar cəhd edir."""
+        import requests
+        gozle = [3, 6, 12, 20, 30]
+        for i in range(len(gozle) + 1):
+            try:
+                return self.s.request(metod, ETAX + yol, headers=basliq, timeout=60, **kw)
+            except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+                if i == len(gozle):
+                    raise
+                print(f"  ... bağlantı kəsildi, {gozle[i]} san. gözləyib yenidən cəhd edirəm ({i + 1}/{len(gozle)})")
+                time.sleep(gozle[i])
 
     def siyahi(self, istiqamet, dan, ya):
         """istiqamet: 'inbox' (gələn) və ya 'outbox' (göndərilən); dan/ya: dd-mm-yyyy"""
@@ -868,7 +881,22 @@ def etaxes_rejimi(a, cixis):
     istiqametler = {"gelen": [("inbox", "Gələn")], "gonderilen": [("outbox", "Göndərilən")]}.get(
         a.istiqamet, [("inbox", "Gələn"), ("outbox", "Göndərilən")])
     cl = ETaxes(etaxes_token())
-    qaimeler = []
+    qaimeler, ugursuz = [], []
+
+    def isle(x, ad, i, n):
+        d = cl.detay(x)
+        ek = None if a.sade else tarixce_al(cl, x)
+        q = etaxes_cevir(d, ad, ek)
+        if not a.nomre and q["tarix"] and not aralidadir(datetime.datetime.strptime(q["tarix"], "%d.%m.%Y").date(), dan, ya):
+            return
+        if getattr(a, "voen", None) and not ({q["gonderen_voen"], q["qebul_voen"]} & set(a.voen)):
+            return
+        qaimeler.append(q)
+        print(f"  {i}/{n} {q['seriya'] + q['nomre']} {q['tarix']} {q['status']}")
+        if a.tta:
+            tta_yaz(q, cixis, a.oflayn)
+        time.sleep(0.2)
+
     for kod, ad in istiqametler:
         sira = cl.siyahi(kod, dan, ya)
         if a.nomre:
@@ -878,32 +906,24 @@ def etaxes_rejimi(a, cixis):
         print(f"{ad} qaimələr ({dan} - {ya}): {len(sira)} ədəd")
         for i, x in enumerate(sira, 1):
             try:
-                d = cl.detay(x)
-                ek = None if a.sade else tarixce_al(cl, x)
-                q = etaxes_cevir(d, ad, ek)
+                isle(x, ad, i, len(sira))
             except Exception as e:
-                print(f"! {x.get('serialNumber')}: götürülmədi ({e})")
-                continue
-            if not a.nomre and q["tarix"] and not aralidadir(datetime.datetime.strptime(q["tarix"], "%d.%m.%Y").date(), dan, ya):
-                continue  # siyahıda tarix görünməyibsə, detaldan yoxlanır
-            if getattr(a, "voen", None) and not ({q["gonderen_voen"], q["qebul_voen"]} & set(a.voen)):
-                continue
-            qaimeler.append(q)
-            print(f"  {i}/{len(sira)} {q['seriya'] + q['nomre']} {q['tarix']} {q['status']}")
-            if a.tta:
-                tta_yaz(q, cixis, a.oflayn)
-            time.sleep(0.2)
+                print(f"! {x.get('serialNumber')}: götürülmədi ({str(e)[:90]})")
+                ugursuz.append((x, ad, i, len(sira)))
+    if ugursuz:
+        print(f"\n{len(ugursuz)} qaimə götürülə bilmədi. 15 saniyə sonra bir də cəhd edirəm...")
+        time.sleep(15)
+        qalan = []
+        for x, ad, i, n in ugursuz:
+            try:
+                isle(x, ad, i, n)
+            except Exception as e:
+                print(f"! {x.get('serialNumber')}: yenə götürülmədi ({str(e)[:90]})")
+                qalan.append(x.get("serialNumber"))
+        if qalan:
+            print("\nGötürülməyən qaimələr: " + " ".join(qalan))
+            print("Bunları sonra menyudan nömrə yazaraq təkrar götürə bilərsiniz.")
     return qaimeler
-
-
-def _tarix_oxu(metn, bos):
-    v = input(metn).strip().replace(".", "-").replace("/", "-")
-    return v or bos
-
-
-def _istiqamet_sec():
-    s = input("Hansı qaimələr? 1) Gələn  2) Göndərilən  3) Hamısı [3]: ").strip()
-    return {"1": "gelen", "2": "gonderilen"}.get(s, "hamisi")
 
 
 def menyu(a):
@@ -929,6 +949,8 @@ def menyu(a):
     else:
         a.sade = input("Tarixçə, versiya və əlaqəli qaimələr də götürülsün? (b/x) [b]: ").strip().lower() in ("x", "xeyr", "n", "no")
         a.tta = False
+        n = input("Yalnız müəyyən qaimələr? Nömrələri boşluqla yazın (boş = seçilmiş şərtlərə uyğun hamısı): ").split()
+        a.nomre = [x.upper() for x in n] or None
     return a
 
 
