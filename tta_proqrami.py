@@ -31,7 +31,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph, Table, TableStyle
 
-VERSION = "1.3.6"
+VERSION = "1.3.7"
 ETAX = "https://new.e-taxes.gov.az"
 REYESTR_URL = ETAX + "/api/po/authless/public/v1/authless/findTaxpayer"
 KESH_FAYLI = "direktorlar.json"
@@ -924,6 +924,16 @@ def etaxes_rejimi(a, cixis):
             print("\nGötürülməyən qaimələr: " + " ".join(qalan))
             print("Bunları sonra menyudan nömrə yazaraq təkrar götürə bilərsiniz.")
     return qaimeler
+
+
+def _tarix_oxu(metn, bos):
+    v = input(metn).strip().replace(".", "-").replace("/", "-")
+    return v or bos
+
+
+def _istiqamet_sec():
+    s = input("Hansı qaimələr? 1) Gələn  2) Göndərilən  3) Hamısı [3]: ").strip()
+    return {"1": "gelen", "2": "gonderilen"}.get(s, "hamisi")
 
 
 def menyu(a):
