@@ -31,7 +31,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph, Table, TableStyle
 
-VERSION = "1.3.4"
+VERSION = "1.3.5"
 ETAX = "https://new.e-taxes.gov.az"
 REYESTR_URL = ETAX + "/api/po/authless/public/v1/authless/findTaxpayer"
 KESH_FAYLI = "direktorlar.json"
@@ -835,6 +835,29 @@ def pdf_rejimi(girisler, cixis, oflayn):
     return qaimeler
 
 
+def _tarix_tap(x):
+    """Siyahı elementindən tarixi tap (sahə adı bəlli olmadığı üçün bir neçə variant yoxlanır)."""
+    for k in ("creationDate", "createdAt", "invoiceDate", "date", "creationTime", "created", "createDate", "modifiedAt"):
+        v = x.get(k)
+        if v:
+            try:
+                return datetime.datetime.fromisoformat(str(v).replace("Z", "+00:00")).replace(tzinfo=None).date()
+            except ValueError:
+                for f in ("%d.%m.%Y %H:%M:%S", "%d.%m.%Y %H:%M", "%d.%m.%Y", "%d-%m-%Y"):
+                    try:
+                        return datetime.datetime.strptime(str(v), f).date()
+                    except ValueError:
+                        pass
+    return None
+
+
+def aralidadir(t, dan, ya):
+    """t: datetime.date; dan/ya: dd-mm-yyyy"""
+    d = datetime.datetime.strptime(dan, "%d-%m-%Y").date()
+    y = datetime.datetime.strptime(ya, "%d-%m-%Y").date()
+    return d <= t <= y
+
+
 def etaxes_rejimi(a, cixis):
     dan, ya = a.dan, a.ya
     if a.il:
@@ -850,6 +873,8 @@ def etaxes_rejimi(a, cixis):
         sira = cl.siyahi(kod, dan, ya)
         if a.nomre:
             sira = [x for x in sira if x.get("serialNumber") in a.nomre]
+        else:  # sayt tarix filtrini nəzərə almaya bilər - özümüz də süzürük
+            sira = [x for x in sira if _tarix_tap(x) is None or aralidadir(_tarix_tap(x), dan, ya)]
         print(f"{ad} qaimələr ({dan} - {ya}): {len(sira)} ədəd")
         for i, x in enumerate(sira, 1):
             try:
@@ -859,6 +884,8 @@ def etaxes_rejimi(a, cixis):
             except Exception as e:
                 print(f"! {x.get('serialNumber')}: götürülmədi ({e})")
                 continue
+            if not a.nomre and q["tarix"] and not aralidadir(datetime.datetime.strptime(q["tarix"], "%d.%m.%Y").date(), dan, ya):
+                continue  # siyahıda tarix görünməyibsə, detaldan yoxlanır
             if getattr(a, "voen", None) and not ({q["gonderen_voen"], q["qebul_voen"]} & set(a.voen)):
                 continue
             qaimeler.append(q)
