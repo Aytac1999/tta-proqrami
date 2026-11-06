@@ -31,7 +31,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph, Table, TableStyle
 
-VERSION = "1.3.2"
+VERSION = "1.3.3"
 ETAX = "https://new.e-taxes.gov.az"
 REYESTR_URL = ETAX + "/api/po/authless/public/v1/authless/findTaxpayer"
 KESH_FAYLI = "direktorlar.json"
@@ -867,19 +867,37 @@ def etaxes_rejimi(a, cixis):
     return qaimeler
 
 
+def _tarix_oxu(metn, bos):
+    v = input(metn).strip().replace(".", "-").replace("/", "-")
+    return v or bos
+
+
+def _istiqamet_sec():
+    s = input("Hansı qaimələr? 1) Gələn  2) Göndərilən  3) Hamısı [3]: ").strip()
+    return {"1": "gelen", "2": "gonderilen"}.get(s, "hamisi")
+
+
 def menyu(a):
-    print(f"TTA proqramı {VERSION}\n  1) PDF qaimələrdən TTA hazırla\n  2) e-taxes-dən qaimələri çək (gələn / göndərilən)")
-    sec = input("Seçim (1/2): ").strip()
+    print(f"TTA proqramı {VERSION}")
+    print("  1) PDF qaimələrdən TTA hazırla")
+    print("  2) e-taxes: qaimə tərkibi (Excel) - seçdiyim tarix aralığında")
+    print("  3) e-taxes: TTA hazırla - seçdiyim tarix aralığında (Excel + PDF)")
+    sec = input("Seçim (1/2/3): ").strip()
     if sec == "1":
         a.giris = [input("Qaimə PDF-lərinin qovluğu (cari qovluq üçün . yazın): ").strip() or "."]
+        return a
+    a.etaxes = True
+    a.istiqamet = _istiqamet_sec()
+    a.dan = _tarix_oxu("Başlanğıc tarix (gg-aa-iiii, boş = ilin əvvəli): ", None)
+    a.ya = _tarix_oxu("Son tarix (gg-aa-iiii, boş = bu gün): ", None)
+    if sec == "3":
+        a.tta = True
+        a.sade = True  # TTA üçün tarixçə/versiya lazım deyil - daha sürətli
+        n = input("Yalnız müəyyən qaimələr üçün? Nömrələri boşluqla yazın (boş = aralıqdakı hamısı): ").split()
+        a.nomre = [x.upper() for x in n] or None
     else:
-        a.etaxes = True
-        s = input("Hansı qaimələr? 1) Gələn  2) Göndərilən  3) Hamısı [3]: ").strip()
-        a.istiqamet = {"1": "gelen", "2": "gonderilen"}.get(s, "hamisi")
-        a.dan = input("Başlanğıc tarix (gg-aa-iiii, boş = ilin əvvəli): ").strip() or None
-        a.ya = input("Son tarix (gg-aa-iiii, boş = bu gün): ").strip() or None
         a.sade = input("Tarixçə, versiya və əlaqəli qaimələr də götürülsün? (b/x) [b]: ").strip().lower() in ("x", "xeyr", "n", "no")
-        a.tta = input("Hər qaimə üçün TTA da hazırlansın? (b/x) [x]: ").strip().lower() in ("b", "bəli", "beli", "y", "yes")
+        a.tta = False
     return a
 
 
