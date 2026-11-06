@@ -31,7 +31,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph, Table, TableStyle
 
-VERSION = "1.3.3"
+VERSION = "1.3.4"
 ETAX = "https://new.e-taxes.gov.az"
 REYESTR_URL = ETAX + "/api/po/authless/public/v1/authless/findTaxpayer"
 KESH_FAYLI = "direktorlar.json"
@@ -859,6 +859,8 @@ def etaxes_rejimi(a, cixis):
             except Exception as e:
                 print(f"! {x.get('serialNumber')}: götürülmədi ({e})")
                 continue
+            if getattr(a, "voen", None) and not ({q["gonderen_voen"], q["qebul_voen"]} & set(a.voen)):
+                continue
             qaimeler.append(q)
             print(f"  {i}/{len(sira)} {q['seriya'] + q['nomre']} {q['tarix']} {q['status']}")
             if a.tta:
@@ -890,10 +892,12 @@ def menyu(a):
     a.istiqamet = _istiqamet_sec()
     a.dan = _tarix_oxu("Başlanğıc tarix (gg-aa-iiii, boş = ilin əvvəli): ", None)
     a.ya = _tarix_oxu("Son tarix (gg-aa-iiii, boş = bu gün): ", None)
+    a.voen = input("VÖEN-ə görə? VÖEN-ləri boşluqla yazın (boş = aralıqdakı bütün VÖEN-lər): ").split() or None
     if sec == "3":
         a.tta = True
+        a.yalniz_tta = True  # TTA ayrı bölmədir: qaimə tərkibi Excel-i hazırlanmır
         a.sade = True  # TTA üçün tarixçə/versiya lazım deyil - daha sürətli
-        n = input("Yalnız müəyyən qaimələr üçün? Nömrələri boşluqla yazın (boş = aralıqdakı hamısı): ").split()
+        n = input("Yalnız müəyyən qaimələr? Nömrələri boşluqla yazın (boş = seçilmiş şərtlərə uyğun hamısı): ").split()
         a.nomre = [x.upper() for x in n] or None
     else:
         a.sade = input("Tarixçə, versiya və əlaqəli qaimələr də götürülsün? (b/x) [b]: ").strip().lower() in ("x", "xeyr", "n", "no")
@@ -909,6 +913,7 @@ def main():
     ap.add_argument("--il", help="il, məs. 2026")
     ap.add_argument("--dan", help="başlanğıc tarix gg-aa-iiii")
     ap.add_argument("--ya", help="son tarix gg-aa-iiii")
+    ap.add_argument("--voen", nargs="*", help="yalnız bu VÖEN-lərlə (göndərən və ya qəbul edən) qaimələr")
     ap.add_argument("--nomre", nargs="*", help="yalnız bu qaimə nömrələri")
     ap.add_argument("--sade", action="store_true", help="tarixçə/versiya/əlaqəli qaimələri götürmə (daha sürətli)")
     ap.add_argument("--tta", action="store_true", help="e-taxes rejimində hər qaimə üçün TTA da hazırla")
@@ -924,7 +929,8 @@ def main():
     os.makedirs(a.cixis, exist_ok=True)
     qaimeler = etaxes_rejimi(a, a.cixis) if a.etaxes else pdf_rejimi(a.giris, a.cixis, a.oflayn)
     if qaimeler:
-        terkib_xlsx(os.path.join(a.cixis, "qaime_terkibi.xlsx"), qaimeler)
+        if not getattr(a, "yalniz_tta", False):
+            terkib_xlsx(os.path.join(a.cixis, "qaime_terkibi.xlsx"), qaimeler)
         print(f"Hazırdır ({len(qaimeler)} qaimə): {os.path.abspath(a.cixis)}")
     else:
         print("Heç bir qaimə işlənmədi.")
