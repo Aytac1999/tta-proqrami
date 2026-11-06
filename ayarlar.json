@@ -1,0 +1,13 @@
+{
+  "yenileme_url": "https://raw.githubusercontent.com/Aytac1999/tta-proqrami/main",
+  "sheher": "Bakı şəhəri",
+  "giris_sablon": "Biz, aşağıda imza edənlər, Satıcı {satici} (VÖEN {satici_voen}) və Alıcı {alici} (VÖEN {alici_voen}), bu aktı tərtib edirik ki, {esas}aşağıda göstərilən mallar Satıcı tərəfindən təhvil verilmiş, Alıcı tərəfindən qəbul edilmişdir.",
+  "iddia_cumlesi": "Tərəflərin həcm, keyfiyyət və müddətə dair bir-birinə qarşı iddiası yoxdur.",
+  "direktor_duzelis": {},
+  "esas_evezlemeleri": [
+    [
+      "müqaviləsi\\s*$",
+      "müqaviləsinə"
+    ]
+  ]
+}
