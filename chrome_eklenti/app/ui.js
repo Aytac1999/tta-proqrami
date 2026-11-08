@@ -347,7 +347,8 @@
     const s = son[tip]; if (!s || !s.length) return;
     $("#cap").innerHTML = s.map(([q, a, b, rk]) => aktHtml(q, a, b, tip, rk)).join("");
     document.body.classList.add("chapda");
-    setTimeout(() => { window.print(); document.body.classList.remove("chapda"); $("#cap").innerHTML = ""; }, 100);
+    const bas = document.title; document.title = " ";
+    setTimeout(() => { window.print(); document.title = bas; document.body.classList.remove("chapda"); $("#cap").innerHTML = ""; }, 100);
   }
   $("#chap-tta").addEventListener("click", () => chap("tta"));
   $("#chap-prot").addEventListener("click", () => chap("protokol"));

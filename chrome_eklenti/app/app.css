@@ -26,8 +26,8 @@ button.lnk{border:0;background:none;color:#1f4e8c;text-decoration:underline;padd
 #rekv input[type=text],#rekv select{display:block;width:100%;margin-top:1px;padding:3px 6px;border:1px solid #b7c4d6;border-radius:5px;font:inherit;background:#fff}#rekv label{display:block;font-size:11px;color:#4a5d73;margin-top:5px}
 details{margin-top:6px;font-size:12px;color:#4a5d73}summary{cursor:pointer}
 #cap{display:none}
+@page{size:A4;margin:0}  /* margin 0: brauzer başlığı/altlığı (tarix, ad) çıxmasın; @media daxilində işləmir */
 @media print{
-  @page{size:A4;margin:0}  /* margin 0: brauzer başlığı/altlığı (tarix, ad, ünvan) çıxmasın */
   body.chapda #ui{display:none}body.chapda #cap{display:block}body{background:#fff}
   .akt{page-break-after:always;font:11px/1.35 Arial,sans-serif;color:#000;padding:14mm 12mm;box-decoration-break:clone;-webkit-box-decoration-break:clone}.akt:last-child{page-break-after:auto}
   .akt .ust{display:flex;justify-content:space-between}.akt h2{text-align:center;font-size:15px;margin:22px 0 14px}
