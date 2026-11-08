@@ -31,7 +31,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph, Table, TableStyle
 
-VERSION = "1.5.20"
+VERSION = "1.5.21"
 ETAX = "https://new.e-taxes.gov.az"
 REYESTR_URL = ETAX + "/api/po/authless/public/v1/authless/findTaxpayer"
 KESH_FAYLI = "direktorlar.json"
@@ -105,13 +105,17 @@ def ayar_yukle(merkezi=None):
         try:
             with open(AYAR_FAYLI, encoding="utf-8") as f:
                 yerli = json.load(f)
+            # köhnə standart mətn yerli fayla donub qalıbsa, yeni mətnə keçir (şəxsi dəyişikliklərə toxunmur)
+            for k in ("giris_sablon", "protokol_giris_sablon"):
+                if isinstance(yerli.get(k), str) and "bu aktı tərtib edirik ki," in yerli[k]:
+                    yerli[k] = yerli[k].replace("bu aktı tərtib edirik ki,", "bu aktı tərtib etdik ona görə ki,")
             a.update(yerli)
         except (OSError, ValueError) as e:
             print(f"! {AYAR_FAYLI} oxunmadı ({e}), standart ayarlar işlədilir")
     else:
         try:
             with open(AYAR_FAYLI, "w", encoding="utf-8") as f:
-                json.dump(VARSAYILAN, f, ensure_ascii=False, indent=2)
+                json.dump({"direktor_duzelis": {}, "rekvizitler": {}}, f, ensure_ascii=False, indent=2)  # yalnız şəxsi ayarlar; mətnlər mərkəzdən avtomatik yenilənir
         except OSError:
             pass
     AYAR = a
