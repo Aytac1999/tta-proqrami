@@ -31,7 +31,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph, Table, TableStyle
 
-VERSION = "1.5.7"
+VERSION = "1.5.8"
 ETAX = "https://new.e-taxes.gov.az"
 REYESTR_URL = ETAX + "/api/po/authless/public/v1/authless/findTaxpayer"
 KESH_FAYLI = "direktorlar.json"
@@ -893,21 +893,21 @@ def tta_xlsx(yol, q, sat, alc, protokol=False):
 def terkib_xlsx(yol, qaimeler):
     wb = Workbook(); ws = wb.active; ws.title = "Qaimə tərkibi"
     bas = ["Qaimə (seriya+nömrə)", "Qaimə tarixi", "İstiqamət", "Status", "Qaimənin tipi", "Vəziyyəti (Cari/Düzəliş)", "Versiya №",
-           "Göndərildi", "Təsdiqləndi (son)", "Təsdiq edən", "Düzəliş edilib?", "Düzəliş tarixi", "Düzəliş edən",
+           "Göndərildi", "Təsdiqləndi (son)", "Düzəliş edilib?", "Düzəliş tarixi", "Düzəliş edən",
            "Əlaqəli qaimələr (geri qaytarma / əsas qaimə)", "Göndərən VÖEN", "Göndərən adı", "Qəbul edən VÖEN",
            "Qəbul edən adı", "Əsas", "Əlavə qeydlər", "Sıra №", "Malın adı", "Malın kodu", "Ölçü vahidi", "Miqdar",
            "Vahidin qiyməti", "Məbləğ (ƏDV-siz)", "ƏDV", "Yekun məbləğ", "Qaytarma səbəbi", "Ləğv tarixi", "Bağlı avans qaiməsi", "Bağlı normal qaimə"]
-    sehife(ws, bas, [20, 12, 12, 24, 40, 18, 9, 17, 17, 28, 14, 17, 28, 50, 14, 34, 14, 34, 40, 24, 7, 50, 14, 10, 10, 12, 14, 12, 14, 18, 26, 30, 30])
+    sehife(ws, bas, [20, 12, 12, 24, 40, 18, 9, 17, 17, 14, 17, 28, 50, 14, 34, 14, 34, 40, 24, 7, 50, 14, 10, 10, 12, 14, 12, 14, 18, 26, 30, 30])
     for q in qaimeler:
         for m in q["mallar"]:
             ws.append([q["seriya"] + q["nomre"], q["tarix"], q.get("istiqamet", ""), q.get("status", ""), q.get("tip", ""), q.get("novu", ""),
-                       q.get("versiya_no"), q.get("gonderildi", ""), q.get("tesdiqlendi", ""), q.get("tesdiq_eden", ""),
+                       q.get("versiya_no"), q.get("gonderildi", ""), q.get("tesdiqlendi", ""),
                        q.get("duzelis", ""), q.get("duzelis_tarixi", ""), q.get("duzelis_eden", ""), q.get("elaqeli", ""),
                        q["gonderen_voen"], q["gonderen_ad"], q["qebul_voen"], q["qebul_ad"], q["esas"], q.get("esas2", ""),
                        m["sira"], m["ad"], m["kod"], m["olcu"], m["miqdar"], m["qiymet"], m["mebleg"], m["edv"], m["yekun"], m.get("sebeb", ""), q.get("legv", ""), q.get("bagli_avans", ""), q.get("bagli_normal", "")])
     for row in ws.iter_rows(min_row=2):
-        for x in row[24:29]:
-            x.number_format = "#,##0.00#######" if x.column == 26 else "#,##0.00"
+        for x in row[23:28]:
+            x.number_format = "#,##0.00#######" if x.column == 25 else "#,##0.00"
     if any(q.get("ek") for q in qaimeler):
         w2 = wb.create_sheet("Tarixçə")
         sehife(w2, ["Qaimə", "Tarix", "İstifadəçi", "Status", "Qeyd"], [20, 17, 36, 28, 40])
