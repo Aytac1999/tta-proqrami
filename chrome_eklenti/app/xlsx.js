@@ -115,7 +115,7 @@ function terkibSehifeleri(qaimeler) {
     "Əlaqəli qaimələr (geri qaytarma / əsas qaimə)", "Göndərən VÖEN", "Göndərən adı", "Qəbul edən VÖEN", "Qəbul edən adı", "Əsas",
     "Əlavə qeydlər", "Sıra №", "Malın adı", "Malın kodu", "Ölçü vahidi", "Miqdar", "Vahidin qiyməti", "Məbləğ (ƏDV-siz)", "ƏDV",
     "Yekun məbləğ", "Qaytarma səbəbi", "Ləğv tarixi", "Bağlı avans qaiməsi", "Bağlı normal qaimə"];
-  const eni = [20, 12, 12, 24, 40, 18, 9, 17, 17, 14, 17, 28, 50, 14, 34, 14, 34, 40, 24, 7, 50, 14, 10, 10, 12, 14, 12, 14, 18, 26, 30, 30];
+  const eni = [20, 12, 12, 14, 16, 11, 9, 17, 17, 14, 17, 28, 50, 14, 34, 14, 34, 40, 24, 7, 50, 14, 10, 10, 12, 14, 12, 14, 18, 26, 30, 30];
   const bs = (a) => a.map((v) => ({ v, s: S.TBASLIQ }));
   const ana = [bs(bas)];
   for (const q of qaimeler) for (const m of q.mallar) {
