@@ -2,9 +2,9 @@
 (function () {
   const $ = (s, k) => (k || document).querySelector(s);
   const hamisi = (s, k) => [...(k || document).querySelectorAll(s)];
-  const jurnal = $("#jurnal");
+  const xeberler = [];
   let dayan = false, isleyir = false, son = { tta: [], protokol: [] };
-  LOG = (m) => { jurnal.textContent += m + "\n"; jurnal.scrollTop = jurnal.scrollHeight; };
+  LOG = (m) => { if (/^\s*!/.test(m)) xeberler.push(m.replace(/^\s*!\s*/, "")); };
   DAYANDI = () => dayan;
   const progress = (i, n) => { $("#dolu").style.width = Math.round((i / n) * 100) + "%"; };
   $("#ver").textContent = "v" + (window.APP_VERSIYA || "?");
@@ -98,7 +98,7 @@
     isleyir = b; dayan = false;
     hamisi(".esas").forEach((x) => (x.disabled = b));
     $("#dayan").hidden = !b; $("#zolaq").hidden = !b;
-    if (b) { jurnal.textContent = ""; $("#dolu").style.width = "0"; $("#chap-qutu").hidden = true; }
+    if (b) { xeberler.length = 0; $("#dolu").style.width = "0"; $("#chap-qutu").hidden = true; }
   }
   $("#dayan").addEventListener("click", () => { dayan = true; LOG("Dayandırılır …"); });
 
@@ -124,7 +124,7 @@
     if (isleyir) return;
     icaze = papkaVar ? await KOPRU("papka_icaze") : false;  // klikdən dərhal sonra: icazə sorğusu istifadəçi hərəkətinə bağlıdır
     mesgul(true); netice([["", "İşləyir …"]]);
-    try { await is(); }
+    try { await is(); if (xeberler.length) $("#netice").innerHTML += `<p class="x">Diqqət (${xeberler.length}): ${_e(xeberler.slice(0, 3).join(" · "))}${xeberler.length > 3 ? " …" : ""}</p>`; }
     catch (e) { netice([["x", e instanceof SessiyaXetasi ? e.message : "Xəta: " + (e && e.message || e)]]); }
     mesgul(false);
   }
