@@ -25,6 +25,16 @@ const STATUS_AZ = {
   cancelationRefused: "Ləğvetmə rədd edilib", deleted: "Silindi", deletedBySystem: "Sistem tərəfindən silindi",
   cancelled: "Ləğv edilib", canceled: "Ləğv edilib", passive: "Passiv", correctionRefused: "Düzəliş rədd edilib",
 };
+// tanış olmayan statusu söz parçasına görə tapır (cancel -> Ləğv edilib, delet -> Silindi, passiv/inactive -> Passiv)
+function statusAz(k) {
+  if (!k) return "";
+  if (STATUS_AZ[k]) return STATUS_AZ[k];
+  const a = String(k).toLowerCase();
+  if (a.includes("cancel") && !a.includes("request")) return "Ləğv edilib";
+  if (a.includes("delet")) return a.includes("system") ? "Sistem tərəfindən silindi" : "Silindi";
+  if (a.includes("passiv") || a.includes("inactive")) return "Passiv";
+  return String(k);
+}
 const NOV_AZ = { current: "Cari", corrected: "Düzəliş edilmiş" };
 const TIP_AZ = {
   MT: "Malların, işlərin və xidmətlərin təqdim edilməsi barədə elektron qaimə-faktura",
@@ -315,7 +325,7 @@ function qaimeCevir(d, istiqamet, ek) {
   if (Math.abs(toplam - cemi) > 0.02) LOG(`  ! ${sn}: mal sətirlərinin cəmi (${toplam}) ilə qaimənin ƏDV-siz məbləği (${cemi}) üst-üstə düşmür`);
   const s = d.sender || {}, r = d.receiver || {};
   return { seriya: sn.slice(0, 6), nomre: sn.slice(6), tarix: tarixCevir(d.createdAt),
-    status: STATUS_AZ[d.status] || d.status || "", istiqamet,
+    status: statusAz(d.status), istiqamet,
     gonderen_voen: s.tin || "", gonderen_ad: s.name || "", qebul_voen: r.tin || "", qebul_ad: r.name || "",
     esas: (d.invoiceComment || "").trim(), esas2: (d.invoiceComment2 || "").trim(), mallar, cemi, edv, yekun,
     novu: NOV_AZ[d.type] || d.type || "", tip: qaimeTipi(sn, d), versiya_no: d.version, ...tarixceXulase(ek),
@@ -375,8 +385,8 @@ function tarixceXulase(ek) {
   const tes = ev.filter((x) => ["approved", "approvedBySystem"].includes(x.status));
   if (gond.length) r.gonderildi = tarixSaat(gond[0].modifiedAt);
   if (tes.length) { const son = tes[tes.length - 1]; r.tesdiqlendi = tarixSaat(son.modifiedAt); r.tesdiq_eden = son.userName || ""; }
-  const leg = ev.filter((x) => ["deactivated", "cancelled", "canceled"].includes(x.status));
-  const sil = ev.filter((x) => ["deleted", "deletedBySystem"].includes(x.status));
+  const leg = ev.filter((x) => ["deactivated"].includes(x.status) || (/cancel/i.test(x.status || "") && !/request/i.test(x.status)));
+  const sil = ev.filter((x) => /delet/i.test(x.status || ""));
   const legG = ev.filter((x) => x.status === "cancelRequested");
   if (leg.length) r.legv = "Ləğv edildi: " + tarixSaat(leg[leg.length - 1].modifiedAt);
   else if (sil.length) r.legv = "Silindi: " + tarixSaat(sil[sil.length - 1].modifiedAt);

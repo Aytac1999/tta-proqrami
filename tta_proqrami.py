@@ -31,7 +31,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph, Table, TableStyle
 
-VERSION = "1.5.13"
+VERSION = "1.5.14"
 ETAX = "https://new.e-taxes.gov.az"
 REYESTR_URL = ETAX + "/api/po/authless/public/v1/authless/findTaxpayer"
 KESH_FAYLI = "direktorlar.json"
@@ -55,6 +55,22 @@ STATUS_AZ = {
     "canceled": "Ləğv edilib",
     "passive": "Passiv",
 }
+
+def status_az(k):
+    """tanış olmayan statusu söz parçasına görə tapır (cancel -> Ləğv edilib, delet -> Silindi, passiv/inactive -> Passiv)"""
+    if not k:
+        return ""
+    if k in STATUS_AZ:
+        return STATUS_AZ[k]
+    a = str(k).lower()
+    if "cancel" in a and "request" not in a:
+        return "Ləğv edilib"
+    if "delet" in a:
+        return "Sistem tərəfindən silindi" if "system" in a else "Silindi"
+    if "passiv" in a or "inactive" in a:
+        return "Passiv"
+    return str(k)
+
 
 # --------------------------------------------------------------------------- ayarlar
 VARSAYILAN = {
@@ -560,7 +576,7 @@ def etaxes_cevir(d, istiqamet, ek=None):
     s, r = d.get("sender") or {}, d.get("receiver") or {}
     return {
         "fayl": "", "seriya": sn[:6], "nomre": sn[6:], "tarix": tarix_cevir(d.get("createdAt")),
-        "status": STATUS_AZ.get(d.get("status"), d.get("status") or ""), "istiqamet": istiqamet,
+        "status": status_az(d.get("status")), "istiqamet": istiqamet,
         "gonderen_voen": s.get("tin") or "", "gonderen_ad": s.get("name") or "",
         "qebul_voen": r.get("tin") or "", "qebul_ad": r.get("name") or "",
         "esas": (d.get("invoiceComment") or "").strip(), "esas2": (d.get("invoiceComment2") or "").strip(),
@@ -652,8 +668,8 @@ def tarixce_xulase(ek):
     if tes:
         r["tesdiqlendi"] = tarix_saat(tes[-1].get("modifiedAt"))  # SON təsdiq
         r["tesdiq_eden"] = tes[-1].get("userName") or ""
-    leg = [x for x in ev if x.get("status") in ("deactivated", "cancelled", "canceled")]
-    sil = [x for x in ev if x.get("status") in ("deleted", "deletedBySystem")]
+    leg = [x for x in ev if x.get("status") == "deactivated" or ("cancel" in str(x.get("status") or "").lower() and "request" not in str(x.get("status") or "").lower())]
+    sil = [x for x in ev if "delet" in str(x.get("status") or "").lower()]
     legg = [x for x in ev if x.get("status") == "cancelRequested"]
     if leg:
         r["legv"] = "Ləğv edildi: " + tarix_saat(leg[-1].get("modifiedAt"))
