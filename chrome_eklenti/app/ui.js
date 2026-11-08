@@ -190,6 +190,20 @@
       ["", `Qaimə tərkibi Excel-i hazırlandı: ${sətir} mal sətri.`], ["ok", `Yerləşdirildi: ${yer}.`]]);
   }));
 
+  $("#bas-edv").addEventListener("click", () => isle("edv", async () => {
+    const dan = $("#b-edv [data-f=edvdan]").value, ya = $("#b-edv [data-f=edvya]").value;
+    if (!dan || !ya) return netice([["x", "Başlanğıc və son ayı seçin."]]);
+    if (dan > ya) return netice([["x", "Başlanğıc ay son aydan böyük ola bilməz."]]);
+    const r = await edvEvezlesmesi({ dan, ya }, (i, n) => { progress(i, n); netice([["", `Qaimələr götürülür … ${i}/${n}`]]); });
+    if (!r.bey.length) return netice([["", "Bu aylar üçün ƏDV bəyannaməsi tapılmadı."]]);
+    const bytes = await xlsxYarat(edvSehifeleri(r.setirler, r.ygb, r.bey));
+    const yer = await saxla([{ ad: `edv_evezlesmesi_${bugun()}.xlsx`, data: bytes, mime: XLSX_MIME }]);
+    const qs = new Set(r.setirler.map((x) => x.seriya + x.nomre)).size;
+    netice([["", `${r.bey.length} ay üzrə bəyannamə tapıldı (${qs} qaimə, ${r.ygb.length} idxal sətri).`],
+      ...(r.tapilmayan.length ? [["x", `e-taxes-də tapılmayan qaimə: ${r.tapilmayan.length} (Excel-də qeyd olunub).`]] : []),
+      ["ok", `Yerləşdirildi: ${yer}.`]]);
+  }));
+
   $("#bas-tta").addEventListener("click", () => isle("tta", async () => {
     const o = oxu($("#b-tta"));
     if (!o.dan || !o.ya) return netice([["x", "Tarixi gg.aa.iiii formatında düzgün yazın (məs. 08.10.2026)."]]);

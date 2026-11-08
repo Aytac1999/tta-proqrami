@@ -231,7 +231,7 @@ class ETaxes {
       return r;
     }
   }
-  async siyahi(istiqamet, dan, ya) { // dan/ya: ISO
+  async siyahi(istiqamet, dan, ya, serial) { // dan/ya: ISO; serial: yalnız bu nömrəli qaimə
     const yaG = new Date(ya + "T00:00:00Z"); yaG.setUTCDate(yaG.getUTCDate() + 1);
     const yaS = yaG.toISOString().slice(0, 10).split("-").reverse().join("-");
     const govde = {
@@ -240,7 +240,7 @@ class ETaxes {
       types: ["current", "corrected"],
       kinds: ["defaultInvoice", "agent", "resale", "recycling", "taxCodex163", "taxCodex177_5", "returnInvoice", "returnByAgent",
         "returnRecycled", "exportNoteInvoice", "exciseGoodsTransfer", "advanceInvoice"],
-      serialNumber: null, senderTin: null, senderName: null, productName: null, productCode: null, receiverTin: null,
+      serialNumber: serial || null, senderTin: null, senderName: null, productName: null, productCode: null, receiverTin: null,
       receiverName: null, creationDateFrom: `${ddmmyyyy(dan)} 00:00`, creationDateTo: `${yaS} 00:00`,
       amountFrom: null, amountTo: null, offset: 0, maxCount: 50, actionOwner: null,
     };
@@ -458,4 +458,96 @@ async function qaimeleriTopla({ istiqamet, dan, ya, voen, nomre, sade }, progres
     if (qalan.length) LOG("\nGötürülməyən qaimələr: " + qalan.join(" ") + "\nBunları nömrə yazaraq təkrar götürə bilərsiniz.");
   }
   return qaimeler;
+}
+
+
+// ------------------------------------------------------------------ ƏDV əvəzləşməsi (bəyannamələrdən)
+const AYLAR_AZ = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "İyun", "İyul", "Avqust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr"];
+const BEY_NOV_AZ = { CURRENT: "Cari", CLARIFYING: "Dəqiqləşdirilmiş", CAMERAL: "Kameral" };
+const BEY_STATUS_AZ = { CONFIRMED: "Təsdiqlənmiş", ON_CHECK: "Uyğunsuzluq yoxlamasında", FILED: "Təqdim edilib" };
+const BEY_API = "/api/po/declaration/public/v1";
+
+// dan/ya: "YYYY-MM". Hər ay üçün SONUNCU (qeydiyyat tarixinə görə) ƏDV bəyannaməsi: cari, dəqiqləşdirilmiş və ya kameral
+async function edvBeyannameleri(cl, dan, ya) {
+  const [dI, dA] = dan.split("-").map(Number), [yI, yA] = ya.split("-").map(Number);
+  const acar = (il, ay) => il * 12 + ay, d1 = acar(dI, dA), d2 = acar(yI, yA);
+  const gor = new Map();
+  for (let il = dI; il <= yI + 1; il++) {  // qeydiyyat ili hesabat ilindən sonra ola bilər
+    let j;
+    try { j = await cl.json("GET", `${BEY_API}/declaration/list?year=${il}`); }
+    catch (e) { if (e instanceof SessiyaXetasi) throw e; LOG(`! ${il}: bəyannamə siyahısı alınmadı (${e.message})`); continue; }
+    for (const x of j.declarations || []) {
+      const d = x.declaration;
+      if (!d || !(d.taxCode === "_0300" || /Əlavə dəyər/.test(d.taxName || ""))) continue;
+      const rp = d.reportingPeriod || {};
+      if (rp.type !== "MONTH" || /DRAFT|DELET/i.test(d.declarationStatus || "")) continue;
+      const k = acar(rp.year, rp.month);
+      if (k < d1 || k > d2) continue;
+      gor.set(d.registrationNumber, { il: rp.year, ay: rp.month, no: d.registrationNumber, nov: d.declarationType,
+        status: d.declarationStatus, reg: (d.registrationDate || "").slice(0, 10), gonder: d.submissionDate || "", tutar: d.taxAmount });
+    }
+  }
+  const ay = new Map();
+  for (const b of gor.values()) {
+    const k = acar(b.il, b.ay), c = ay.get(k);
+    if (!c || (b.reg + b.gonder + b.no) > (c.reg + c.gonder + c.no)) ay.set(k, b);
+  }
+  return [...ay.entries()].sort((a, b) => a[0] - b[0]).map(([, b]) => b);
+}
+async function beyCedvel(cl, kod, no) {
+  const out = [];
+  for (let off = 0; ; off += 1000) {
+    let a = null, son = null;
+    for (let c = 0; c < 3 && a === null; c++) {
+      try { a = JSON.parse((await cl.json("GET", `${BEY_API}/calc/${kod}?reg_number=${no}&offset=${off}&maxCount=1000`)).calcPartJson || "[]"); }
+      catch (e) { if (e instanceof SessiyaXetasi) throw e; son = e; await gozle(1500); }
+    }
+    if (a === null) throw son || new Error("cədvəl alınmadı");
+    out.push(...a);
+    if (a.length < 1000) break;
+  }
+  return out;
+}
+const _tarixIso = (s) => String(s || "").slice(0, 10).split("-").reverse().join(".");
+async function edvEvezlesmesi({ dan, ya }, progress) {
+  const cl = new ETaxes();
+  const bey = await edvBeyannameleri(cl, dan, ya);
+  for (let i = 0; i < bey.length && !DAYANDI(); i++) {
+    const b = bey[i];
+    b.inv = await beyCedvel(cl, "VAT_APPENDIX_1_REPORT_PERIOD_INVOICE", b.no);
+    b.ccd = await beyCedvel(cl, "VAT_APPENDIX_1_REPORT_PERIOD_CCD", b.no);
+    LOG(`  ${AYLAR_AZ[b.ay - 1]} ${b.il} (${BEY_NOV_AZ[b.nov] || b.nov}): ${b.inv.length} qaimə, ${b.ccd.length} YGB`);
+  }
+  const unik = [...new Set(bey.flatMap((b) => (b.inv || []).map((r) => r.documentSerial + r.documentNumber)))];
+  const ceh = new Map(), sabah = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  let nov = 0, hazir = 0;
+  const isci = async () => {
+    while (!DAYANDI()) {
+      const i = nov++; if (i >= unik.length) return;
+      const sn = unik[i];
+      try {
+        const x = (await cl.siyahi("inbox", "2000-01-01", sabah, sn)).find((z) => z.serialNumber === sn);
+        ceh.set(sn, x ? qaimeCevir(await cl.detay(x), "Gələn", null) : null);
+      } catch (e) { if (e instanceof SessiyaXetasi) throw e; LOG(`! ${sn}: götürülmədi (${String(e.message).slice(0, 80)})`); ceh.set(sn, null); }
+      progress && progress(++hazir, unik.length);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(6, unik.length) }, isci));
+  const setirler = [], ygb = [], tapilmayan = [];
+  for (const b of bey) {
+    const ayAd = `${AYLAR_AZ[b.ay - 1]} ${b.il}`, nv = BEY_NOV_AZ[b.nov] || b.nov;
+    for (const r of b.inv || []) {
+      const sn = r.documentSerial + r.documentNumber;
+      let q = ceh.get(sn);
+      if (!q) {
+        tapilmayan.push(sn);
+        q = { seriya: r.documentSerial, nomre: r.documentNumber, tarix: _tarixIso(r.documentDate), istiqamet: "Gələn", status: "", tip: "", novu: "",
+          gonderen_voen: r.tin || "", gonderen_ad: "", qebul_voen: "", qebul_ad: "", esas: "", esas2: "", elaqeli_siyahi: [],
+          mallar: [{ sira: "", ad: "(qaimə e-taxes-də tapılmadı)", kod: "", olcu: "", miqdar: "", qiymet: "", mebleg: r2(num(r.amount) - num(r.vat)), edv: num(r.vat), yekun: num(r.amount), sebeb: "" }] };
+      }
+      setirler.push({ ...q, _bey: ayAd, _beyNov: nv, _odenilmis: r.paidAmount, _evez: r.paidVat });
+    }
+    for (const c of b.ccd || []) ygb.push({ bey: ayAd, nov: nv, no: c.documentNumber, tarix: _tarixIso(c.documentDate), deyer: c.cost, edv: c.vat });
+  }
+  return { bey, setirler, ygb, tapilmayan };
 }

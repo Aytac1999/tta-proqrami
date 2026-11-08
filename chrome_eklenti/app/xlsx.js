@@ -162,3 +162,25 @@ function aktSehifesi(q, sat, alc, tip, rekv) {
   }
   return { ad: tip === "protokol" ? "Protokol" : tip === "hesab" ? "Hesab-faktura" : "TTA", rows, eni: [5, 46, 15, 11, 9, 13, 14], hundur, sigdir: true, birlesdir: ["A3:G3", "A5:G7"] };
 }
+
+
+// ƏDV əvəzləşməsi: qaimə tərkibi + bəyannamə ayı / növü / ödənilmiş məbləğ / əvəzləşdirilən ƏDV; idxal (YGB); bəyannamələr
+function edvSehifeleri(setirler, ygb, bey) {
+  const sh = terkibSehifeleri(setirler)[0];
+  const bs = (a) => a.map((v) => ({ v, s: S.TBASLIQ }));
+  sh.ad = "ƏDV əvəzləşməsi";
+  sh.rows[0].push(...bs(["Bəyannamə ayı", "Bəyannamənin növü", "Ödənilmiş məbləğ", "Əvəzləşdirilən ƏDV"]));
+  let ri = 1;
+  for (const q of setirler) q.mallar.forEach((m, i) => {
+    sh.rows[ri++].push(i ? "" : q._bey, i ? "" : q._beyNov, i ? "" : { v: q._odenilmis, s: S.TPUL }, i ? "" : { v: q._evez, s: S.TPUL });
+  });
+  sh.eni.push(18, 18, 16, 16); sh.suzgec = sh.rows[0].length;
+  const yg = [bs(["Bəyannamə ayı", "Bəyannamənin növü", "YGB №", "YGB tarixi", "ƏDV-siz dəyər", "ƏDV məbləği"])];
+  for (const y of ygb) yg.push([y.bey, y.nov, y.no, y.tarix, { v: y.deyer, s: S.TPUL }, { v: y.edv, s: S.TPUL }]);
+  const bl = [bs(["Dövr", "Bəyannamənin növü", "Sənəd nömrəsi", "Statusu", "Qeydiyyat tarixi", "Əvəzləşdirmə qaimələrinin sayı", "Ödənilmiş ƏDV cəmi", "İdxal ƏDV cəmi"])];
+  const topla = (a, f) => Math.round(a.reduce((t, x) => t + (Number(f(x)) || 0), 0) * 100) / 100;
+  for (const b of bey) bl.push([`${AYLAR_AZ[b.ay - 1]} ${b.il}`, BEY_NOV_AZ[b.nov] || b.nov, b.no, BEY_STATUS_AZ[b.status] || b.status, _tarixIso(b.reg),
+    (b.inv || []).length, { v: topla(b.inv || [], (r) => r.paidVat), s: S.TPUL }, { v: topla(b.ccd || [], (r) => r.vat), s: S.TPUL }]);
+  return [sh, { ad: "İdxal (YGB)", rows: yg, eni: [18, 18, 20, 14, 16, 16], dondur: true, suzgec: 6 },
+    { ad: "Bəyannamələr", rows: bl, eni: [18, 18, 22, 26, 16, 18, 18, 16], dondur: true, suzgec: 8 }];
+}
