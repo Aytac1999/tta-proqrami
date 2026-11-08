@@ -122,7 +122,8 @@
   function tetbiq(q, kod) {
     if (q.ok) {
       const qalan = q.bitir ? Math.ceil((new Date(q.bitir + "T23:59:59") - Date.now()) / GUN) : null;
-      kilid(false, qalan != null && qalan <= 3 ? `İcazənin bitməsinə ${qalan} gün qalıb (${q.bitir}).` : "");
+      $("#kod").textContent = " · kod " + kod + (q.bitir ? " · bitir: " + q.bitir : "");
+      kilid(false, qalan != null && qalan <= 7 ? `İcazənin bitməsinə ${qalan} gün qalıb (${q.bitir}).` : "");
     } else {
       kilid(true, q.sebeb === "bitib" ? `İcazənin müddəti bitib (${q.bitir}). Yeniləmək üçün kodunuzu göndərin: ${kod}`
         : q.sebeb === "blok" ? `İcazə ləğv edilib. Kodunuz: ${kod}`
