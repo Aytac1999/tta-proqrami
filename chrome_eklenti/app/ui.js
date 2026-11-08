@@ -19,18 +19,37 @@
     hamisi(".bolme").forEach((s) => (s.hidden = s.id !== "b-" + b.dataset.b));
   }));
 
-  // tarix: gün / ay / il (brauzerin ay/gün/il formatından asılı olmasın deyə üç ayrı seçici)
-  const AYLAR = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "İyun", "İyul", "Avqust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr"];
+  // tarix: əllə yazılır, nöqtələr avtomatik düşür (08 -> 08. ; 10 -> 08.10. ; 2026 -> 08.10.2026)
+  function tarixMaska(xam, silme) {
+    const hisse = []; let cari = "";
+    for (const ch of xam) {
+      if (/\d/.test(ch)) { cari += ch; if (cari.length === (hisse.length < 2 ? 2 : 4)) { hisse.push(cari); cari = ""; } }
+      else if (cari) { hisse.push(hisse.length < 2 && cari.length === 1 ? "0" + cari : cari); cari = ""; }
+      if (hisse.length === 3) break;
+    }
+    const p = cari ? [...hisse, cari] : hisse;
+    let out = p.join(".");
+    if (!silme && !cari && hisse.length > 0 && hisse.length < 3) out += ".";
+    return out;
+  }
+  function tarixAyir(s) {  // "08.10.2026" -> "2026-10-08" (səhvdirsə: "")
+    const m = String(s).match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+    if (!m) return "";
+    const d = new Date(+m[3], +m[2] - 1, +m[1]);
+    return d.getFullYear() === +m[3] && d.getMonth() === +m[2] - 1 && d.getDate() === +m[1] ? `${m[3]}-${m[2]}-${m[1]}` : "";
+  }
   function tarixQur(div) {
-    const mk = (secimler) => { const s = document.createElement("select"); secimler.forEach(([v, t]) => { const o = document.createElement("option"); o.value = v; o.textContent = t; s.appendChild(o); }); div.appendChild(s); return s; };
-    const il0 = new Date().getFullYear();
-    const g = mk(Array.from({ length: 31 }, (_, i) => [String(i + 1), String(i + 1).padStart(2, "0")]));
-    const a = mk(AYLAR.map((t, i) => [String(i + 1), t]));
-    const y = mk(Array.from({ length: 8 }, (_, i) => [String(il0 - 6 + i), String(il0 - 6 + i)]));
+    const inp = document.createElement("input");
+    inp.type = "text"; inp.placeholder = "gg.aa.iiii"; inp.maxLength = 10; inp.inputMode = "numeric"; inp.autocomplete = "off";
+    div.appendChild(inp);
+    inp.addEventListener("input", (e) => {
+      inp.value = tarixMaska(inp.value, !!(e.inputType && e.inputType.startsWith("delete")));
+      inp.classList.remove("sehv");
+    });
+    inp.addEventListener("blur", () => inp.classList.toggle("sehv", inp.value !== "" && !tarixAyir(inp.value)));
     Object.defineProperty(div, "value", {
-      get() { const yy = +y.value, mm = +a.value, son = new Date(yy, mm, 0).getDate(), dd = Math.min(+g.value, son);
-        return `${yy}-${String(mm).padStart(2, "0")}-${String(dd).padStart(2, "0")}`; },
-      set(v) { const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/); if (m) { y.value = String(+m[1]); a.value = String(+m[2]); g.value = String(+m[3]); } },
+      get() { return tarixAyir(inp.value); },
+      set(v) { const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/); if (m) inp.value = `${m[3]}.${m[2]}.${m[1]}`; },
     });
   }
   hamisi("[data-f=dan],[data-f=ya]").forEach(tarixQur);
@@ -148,7 +167,8 @@
 
   $("#bas-terkib").addEventListener("click", () => isle("terkib", async () => {
     const o = oxu($("#b-terkib"));
-    if (!o.dan || !o.ya) return netice([["x", "Tarixləri seçin."]]);
+    if (!o.dan || !o.ya) return netice([["x", "Tarixi gg.aa.iiii formatında düzgün yazın (məs. 08.10.2026)."]]);
+    if (o.dan > o.ya) return netice([["x", "Başlanğıc tarix son tarixdən böyük ola bilməz."]]);
     const q = await qaimeleriTopla({ ...o, sade: !o.f("tarixce") }, (i, n) => { progress(i, n); netice([["", `İşləyir … ${i}/${n}`]]); });
     if (!q.length) return netice([["", `${aralikYazi(o)} aralığında uyğun qaimə tapılmadı.`]]);
     const bytes = await xlsxYarat(terkibSehifeleri(q));
@@ -160,7 +180,8 @@
 
   $("#bas-tta").addEventListener("click", () => isle("tta", async () => {
     const o = oxu($("#b-tta"));
-    if (!o.dan || !o.ya) return netice([["x", "Tarixləri seçin."]]);
+    if (!o.dan || !o.ya) return netice([["x", "Tarixi gg.aa.iiii formatında düzgün yazın (məs. 08.10.2026)."]]);
+    if (o.dan > o.ya) return netice([["x", "Başlanğıc tarix son tarixdən böyük ola bilməz."]]);
     const tta = o.f("tta"), prot = o.f("protokol"), hes = o.f("hesab");
     if (!tta && !prot && !hes) return netice([["x", "Ən azı bir sənəd növünü seçin."]]);
     if (hes) {
