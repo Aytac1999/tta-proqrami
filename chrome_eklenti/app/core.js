@@ -340,7 +340,7 @@ function elaqeliAc(...kokler) {
   return out;
 }
 function tarixceXulase(ek) {
-  const r = { gonderildi: "", tesdiqlendi: "", tesdiq_eden: "", ek, duzelis: "", duzelis_tarixi: "", duzelis_eden: "", elaqeli: "", elaqeli_siyahi: [] };
+  const r = { gonderildi: "", tesdiqlendi: "", tesdiq_eden: "", legv: "", ek, duzelis: "", duzelis_tarixi: "", duzelis_eden: "", elaqeli: "", elaqeli_siyahi: [] };
   if (!ek) return r;
   const vs = [...(ek.versions || [])].sort((a, b) => (a.versionNumber || 0) - (b.versionNumber || 0));
   if (vs.length > 1) {
@@ -355,6 +355,10 @@ function tarixceXulase(ek) {
   const tes = ev.filter((x) => ["approved", "approvedBySystem"].includes(x.status));
   if (gond.length) r.gonderildi = tarixSaat(gond[0].modifiedAt);
   if (tes.length) { const son = tes[tes.length - 1]; r.tesdiqlendi = tarixSaat(son.modifiedAt); r.tesdiq_eden = son.userName || ""; }
+  const leg = ev.filter((x) => x.status === "deactivated");
+  const legG = ev.filter((x) => x.status === "cancelRequested");
+  if (leg.length) r.legv = "Ləğv edildi: " + tarixSaat(leg[leg.length - 1].modifiedAt);
+  else if (legG.length) r.legv = "Ləğvə göndərildi: " + tarixSaat(legG[legG.length - 1].modifiedAt);
   return r;
 }
 

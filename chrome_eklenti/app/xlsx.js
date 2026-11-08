@@ -114,15 +114,15 @@ function terkibSehifeleri(qaimeler) {
     "Göndərildi", "Təsdiqləndi (son)", "Təsdiq edən", "Düzəliş edilib?", "Düzəliş tarixi", "Düzəliş edən",
     "Əlaqəli qaimələr (geri qaytarma / əsas qaimə)", "Göndərən VÖEN", "Göndərən adı", "Qəbul edən VÖEN", "Qəbul edən adı", "Əsas",
     "Əlavə qeydlər", "Sıra №", "Malın adı", "Malın kodu", "Ölçü vahidi", "Miqdar", "Vahidin qiyməti", "Məbləğ (ƏDV-siz)", "ƏDV",
-    "Yekun məbləğ", "Qaytarma səbəbi"];
-  const eni = [20, 12, 12, 24, 40, 18, 9, 17, 17, 28, 14, 17, 28, 50, 14, 34, 14, 34, 40, 24, 7, 50, 14, 10, 10, 12, 14, 12, 14, 18];
+    "Yekun məbləğ", "Qaytarma səbəbi", "Ləğv tarixi"];
+  const eni = [20, 12, 12, 24, 40, 18, 9, 17, 17, 28, 14, 17, 28, 50, 14, 34, 14, 34, 40, 24, 7, 50, 14, 10, 10, 12, 14, 12, 14, 18, 26];
   const bs = (a) => a.map((v) => ({ v, s: S.TBASLIQ }));
   const ana = [bs(bas)];
   for (const q of qaimeler) for (const m of q.mallar) {
     ana.push([q.seriya + q.nomre, q.tarix, q.istiqamet || "", q.status || "", q.tip || "", q.novu || "", q.versiya_no == null ? "" : q.versiya_no,
       q.gonderildi || "", q.tesdiqlendi || "", q.tesdiq_eden || "", q.duzelis || "", q.duzelis_tarixi || "", q.duzelis_eden || "", q.elaqeli || "",
       q.gonderen_voen, q.gonderen_ad, q.qebul_voen, q.qebul_ad, q.esas, q.esas2 || "", m.sira, m.ad, m.kod, m.olcu, m.miqdar,
-      { v: m.qiymet, s: S.TQIYMET }, { v: m.mebleg, s: S.TPUL }, { v: m.edv, s: S.TPUL }, { v: m.yekun, s: S.TPUL }, m.sebeb || ""]);
+      { v: m.qiymet, s: S.TQIYMET }, { v: m.mebleg, s: S.TPUL }, { v: m.edv, s: S.TPUL }, { v: m.yekun, s: S.TPUL }, m.sebeb || "", q.legv || ""]);
   }
   const sh = [{ ad: "Qaimə tərkibi", rows: ana, eni, dondur: true, suzgec: bas.length }];
   if (qaimeler.some((q) => q.ek)) {

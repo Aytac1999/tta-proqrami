@@ -31,7 +31,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph, Table, TableStyle
 
-VERSION = "1.5.5"
+VERSION = "1.5.6"
 ETAX = "https://new.e-taxes.gov.az"
 REYESTR_URL = ETAX + "/api/po/authless/public/v1/authless/findTaxpayer"
 KESH_FAYLI = "direktorlar.json"
@@ -608,7 +608,7 @@ def elaqeli_ac(*kokler):
 
 def tarixce_xulase(ek):
     """Hadisələrdən: göndərilmə / son təsdiq tarixi və kim təsdiqlədi."""
-    r = {"gonderildi": "", "tesdiqlendi": "", "tesdiq_eden": "", "ek": ek,
+    r = {"gonderildi": "", "tesdiqlendi": "", "tesdiq_eden": "", "legv": "", "ek": ek,
          "duzelis": "", "duzelis_tarixi": "", "duzelis_eden": "", "elaqeli": "", "elaqeli_siyahi": []}
     if not ek:
         return r
@@ -633,6 +633,12 @@ def tarixce_xulase(ek):
     if tes:
         r["tesdiqlendi"] = tarix_saat(tes[-1].get("modifiedAt"))  # SON təsdiq
         r["tesdiq_eden"] = tes[-1].get("userName") or ""
+    leg = [x for x in ev if x.get("status") == "deactivated"]
+    legg = [x for x in ev if x.get("status") == "cancelRequested"]
+    if leg:
+        r["legv"] = "Ləğv edildi: " + tarix_saat(leg[-1].get("modifiedAt"))
+    elif legg:
+        r["legv"] = "Ləğvə göndərildi: " + tarix_saat(legg[-1].get("modifiedAt"))
     return r
 
 
@@ -879,15 +885,15 @@ def terkib_xlsx(yol, qaimeler):
            "Göndərildi", "Təsdiqləndi (son)", "Təsdiq edən", "Düzəliş edilib?", "Düzəliş tarixi", "Düzəliş edən",
            "Əlaqəli qaimələr (geri qaytarma / əsas qaimə)", "Göndərən VÖEN", "Göndərən adı", "Qəbul edən VÖEN",
            "Qəbul edən adı", "Əsas", "Əlavə qeydlər", "Sıra №", "Malın adı", "Malın kodu", "Ölçü vahidi", "Miqdar",
-           "Vahidin qiyməti", "Məbləğ (ƏDV-siz)", "ƏDV", "Yekun məbləğ", "Qaytarma səbəbi"]
-    sehife(ws, bas, [20, 12, 12, 24, 40, 18, 9, 17, 17, 28, 14, 17, 28, 50, 14, 34, 14, 34, 40, 24, 7, 50, 14, 10, 10, 12, 14, 12, 14, 18])
+           "Vahidin qiyməti", "Məbləğ (ƏDV-siz)", "ƏDV", "Yekun məbləğ", "Qaytarma səbəbi", "Ləğv tarixi"]
+    sehife(ws, bas, [20, 12, 12, 24, 40, 18, 9, 17, 17, 28, 14, 17, 28, 50, 14, 34, 14, 34, 40, 24, 7, 50, 14, 10, 10, 12, 14, 12, 14, 18, 26])
     for q in qaimeler:
         for m in q["mallar"]:
             ws.append([q["seriya"] + q["nomre"], q["tarix"], q.get("istiqamet", ""), q.get("status", ""), q.get("tip", ""), q.get("novu", ""),
                        q.get("versiya_no"), q.get("gonderildi", ""), q.get("tesdiqlendi", ""), q.get("tesdiq_eden", ""),
                        q.get("duzelis", ""), q.get("duzelis_tarixi", ""), q.get("duzelis_eden", ""), q.get("elaqeli", ""),
                        q["gonderen_voen"], q["gonderen_ad"], q["qebul_voen"], q["qebul_ad"], q["esas"], q.get("esas2", ""),
-                       m["sira"], m["ad"], m["kod"], m["olcu"], m["miqdar"], m["qiymet"], m["mebleg"], m["edv"], m["yekun"], m.get("sebeb", "")])
+                       m["sira"], m["ad"], m["kod"], m["olcu"], m["miqdar"], m["qiymet"], m["mebleg"], m["edv"], m["yekun"], m.get("sebeb", ""), q.get("legv", "")])
     for row in ws.iter_rows(min_row=2):
         for x in row[24:29]:
             x.number_format = "#,##0.00#######" if x.column == 26 else "#,##0.00"
