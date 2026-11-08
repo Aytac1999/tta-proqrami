@@ -142,3 +142,6 @@ async function isle(m) {
   if (m.t === "chap") { qutu.contentWindow.focus(); return true; }
   return { xeta: "naməlum əmr" };
 }
+
+// üzən pəncərədə açılıbsa, səhifəyə "yükləndi" xəbəri (bloklanıbsa bu gəlməz, ayrıca pəncərə açılır)
+if (window.parent !== window) window.parent.postMessage({ tta_yuklendi: true }, "*");
