@@ -31,7 +31,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph, Table, TableStyle
 
-VERSION = "1.5.11"
+VERSION = "1.5.12"
 ETAX = "https://new.e-taxes.gov.az"
 REYESTR_URL = ETAX + "/api/po/authless/public/v1/authless/findTaxpayer"
 KESH_FAYLI = "direktorlar.json"
@@ -491,10 +491,13 @@ def tarixce_al(cl, qaime):
     sn = qaime.get("serialNumber") or ""
     ss = {"sourceSystem": qaime.get("sourceSystem") or "avis"}
     base = f"/api/po/invoice/public/v1/invoice/{qaime['id']}"
-    h = _ek(cl._istek, base + "/history", params=ss) or {}
-    v = _ek(cl._istek, base + "/versions", params=ss) or {}
-    t = _ek(cl._istek, "/api/po/invoice/public/v1/invoice/tree", json={"serialNumbers": [sn]}) or {}
-    e = _ek(cl._istek, f"/api/po/invoice/public/v1/invoice/get-related-invoice-tree/{sn}") or {}
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(4) as ex:  # 4 sorğu eyni anda
+        fh = ex.submit(_ek, cl._istek, base + "/history", params=ss)
+        fv = ex.submit(_ek, cl._istek, base + "/versions", params=ss)
+        ft = ex.submit(_ek, cl._istek, "/api/po/invoice/public/v1/invoice/tree", json={"serialNumbers": [sn]})
+        fe = ex.submit(_ek, cl._istek, f"/api/po/invoice/public/v1/invoice/get-related-invoice-tree/{sn}")
+        h, v, t, e = (fh.result() or {}), (fv.result() or {}), (ft.result() or {}), (fe.result() or {})
     return {"sn": sn, "events": h.get("events") or [], "versions": v.get("versions") or [],
             "tree": t.get("invoiceTree") or [], "related": e.get("parentInvoiceHistories") or []}
 
@@ -1049,9 +1052,14 @@ def etaxes_rejimi(a, cixis):
     cl = ETaxes(etaxes_token())
     qaimeler, ugursuz = [], []
 
-    def isle(x, ad, i, n):
-        d = cl.detay(x)
-        ek = None if a.sade else tarixce_al(cl, x)
+    from concurrent.futures import ThreadPoolExecutor
+
+    def getir(x):
+        """şəbəkə hissəsi (paralel): detay + tarixçə"""
+        return cl.detay(x), (None if a.sade else tarixce_al(cl, x))
+
+    def isle(x, ad, i, n, netice=None):
+        d, ek = netice if netice is not None else getir(x)
         q = avans_bagla(etaxes_cevir(d, ad, ek))
         if not a.nomre and q["tarix"] and not aralidadir(datetime.datetime.strptime(q["tarix"], "%d.%m.%Y").date(), dan, ya):
             return
@@ -1061,7 +1069,6 @@ def etaxes_rejimi(a, cixis):
         print(f"  {i}/{n} {q['seriya'] + q['nomre']} {q['tarix']} {q['status']}")
         if a.tta:
             tta_yaz(q, cixis, a.oflayn, getattr(a, "sened", "ikisi"))
-        time.sleep(0.2)
 
     for kod, ad in istiqametler:
         if _dayandi():
@@ -1072,15 +1079,20 @@ def etaxes_rejimi(a, cixis):
         else:  # sayt tarix filtrini nəzərə almaya bilər - özümüz də süzürük
             sira = [x for x in sira if _tarix_tap(x) is None or aralidadir(_tarix_tap(x), dan, ya)]
         print(f"{ad} qaimələr ({dan} - {ya}): {len(sira)} ədəd")
-        for i, x in enumerate(sira, 1):
-            if _dayandi():
-                print("Dayandırıldı.")
-                break
-            try:
-                isle(x, ad, i, len(sira))
-            except Exception as e:
-                print(f"! {x.get('serialNumber')}: götürülmədi ({str(e)[:90]})")
-                ugursuz.append((x, ad, i, len(sira)))
+        # şəbəkə sorğuları eyni anda (6 qaimə), emal isə əvvəlki sıra ilə
+        with ThreadPoolExecutor(6) as ex:
+            vedreler = [ex.submit(getir, x) for x in sira]
+            for i, (x, f) in enumerate(zip(sira, vedreler), 1):
+                if _dayandi():
+                    print("Dayandırıldı.")
+                    for g in vedreler:
+                        g.cancel()
+                    break
+                try:
+                    isle(x, ad, i, len(sira), f.result())
+                except Exception as e:
+                    print(f"! {x.get('serialNumber')}: götürülmədi ({str(e)[:90]})")
+                    ugursuz.append((x, ad, i, len(sira)))
     if ugursuz and not _dayandi():
         print(f"\n{len(ugursuz)} qaimə götürülə bilmədi. 15 saniyə sonra bir də cəhd edirəm...")
         time.sleep(15)

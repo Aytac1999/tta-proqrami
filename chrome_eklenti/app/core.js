@@ -126,18 +126,24 @@ const ddmmyyyy = (isoS) => isoS.split("-").reverse().join("-");
 const gozle = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ------------------------------------------------------------------ reyestr (direktor)
+let _reyKesh = null, _reyYaz = Promise.resolve();
+const _reyGozleyen = {};  // eyni VÖEN eyni anda bir dəfə sorğulanır
 async function reyestr(voen) {
-  const kesh = (await KOPRU("get", { key: "direktorlar" })) || {};
-  if (kesh[voen]) return kesh[voen];
-  const r = await KOPRU("fetch", { url: REYESTR_URL, metod: "POST",
-    json: { tin: voen, type: "legalEntity", serviceCode: "checkLegalName", isStateRegistry: true } });
-  try {
-    const t = JSON.parse(r.text).taxpayers[0];
-    const n = { ad: t.name, direktor: azAdlandir(t.legalTaxpayerStatus.legitimate) };
-    kesh[voen] = n;
-    await KOPRU("set", { key: "direktorlar", value: kesh });
-    return n;
-  } catch (e) { LOG(`  ! Reyestr sorğusu alınmadı (${voen})`); return null; }
+  if (!_reyKesh) _reyKesh = (await KOPRU("get", { key: "direktorlar" })) || {};
+  if (_reyKesh[voen]) return _reyKesh[voen];
+  if (_reyGozleyen[voen]) return _reyGozleyen[voen];
+  return (_reyGozleyen[voen] = (async () => {
+    const r = await KOPRU("fetch", { url: REYESTR_URL, metod: "POST",
+      json: { tin: voen, type: "legalEntity", serviceCode: "checkLegalName", isStateRegistry: true } });
+    try {
+      const t = JSON.parse(r.text).taxpayers[0];
+      const n = { ad: t.name, direktor: azAdlandir(t.legalTaxpayerStatus.legitimate) };
+      _reyKesh[voen] = n;
+      _reyYaz = _reyYaz.then(() => KOPRU("set", { key: "direktorlar", value: _reyKesh }));  // yazmalar növbə ilə
+      return n;
+    } catch (e) { LOG(`  ! Reyestr sorğusu alınmadı (${voen})`); return null; }
+    finally { delete _reyGozleyen[voen]; }
+  })());
 }
 const _SOYAD = ["yeva", "yev", "ova", "eva", "ov", "ev", "zadə", "zade", "ski", "skaya"];
 const _SOYAD_UZUN = ["lı", "li", "lu", "lü"];  // yalnız uzun sözlərdə (Əli, Vəli kimi adlarla qarışmasın)
@@ -262,10 +268,13 @@ async function ekAl(cl, yol, o) {
 async function tarixceAl(cl, q) {
   const sn = q.serialNumber || "", ss = { sourceSystem: q.sourceSystem || "avis" };
   const base = `/api/po/invoice/public/v1/invoice/${q.id}`;
-  const h = (await ekAl(cl, base + "/history", { params: ss })) || {};
-  const v = (await ekAl(cl, base + "/versions", { params: ss })) || {};
-  const t = (await ekAl(cl, "/api/po/invoice/public/v1/invoice/tree", { json: { serialNumbers: [sn] } })) || {};
-  const e = (await ekAl(cl, `/api/po/invoice/public/v1/invoice/get-related-invoice-tree/${sn}`)) || {};
+  const [h0, v0, t0, e0] = await Promise.all([   // 4 sorğu eyni anda
+    ekAl(cl, base + "/history", { params: ss }),
+    ekAl(cl, base + "/versions", { params: ss }),
+    ekAl(cl, "/api/po/invoice/public/v1/invoice/tree", { json: { serialNumbers: [sn] } }),
+    ekAl(cl, `/api/po/invoice/public/v1/invoice/get-related-invoice-tree/${sn}`),
+  ]);
+  const h = h0 || {}, v = v0 || {}, t = t0 || {}, e = e0 || {};
   return { sn, events: h.events || [], versions: v.versions || [], tree: t.invoiceTree || [], related: e.parentInvoiceHistories || [] };
 }
 
@@ -377,17 +386,36 @@ async function qaimeleriTopla({ istiqamet, dan, ya, voen, nomre, sade }, progres
   const cl = new ETaxes();
   const yonler = { gelen: [["inbox", "Gələn"]], gonderilen: [["outbox", "Göndərilən"]] }[istiqamet] || [["inbox", "Gələn"], ["outbox", "Göndərilən"]];
   const qaimeler = [], ugursuz = [];
+  const PARALEL = 6;  // eyni anda neçə qaimə işlənir
   const isle = async (x, ad, i, n) => {
-    const d = await cl.detay(x);
-    const ek = sade ? null : await tarixceAl(cl, x);
+    const [d, ek] = await Promise.all([cl.detay(x), sade ? null : tarixceAl(cl, x)]);
     const q = avansBagla(qaimeCevir(d, ad, ek));
     const t = iso(q.tarix);
-    if (!(nomre && nomre.length) && t && !araliqda(t, dan, ya)) return;
-    if (voen && voen.length && !voen.some((v) => v === q.gonderen_voen || v === q.qebul_voen)) return;
-    qaimeler.push(q);
+    if (!(nomre && nomre.length) && t && !araliqda(t, dan, ya)) return null;
+    if (voen && voen.length && !voen.some((v) => v === q.gonderen_voen || v === q.qebul_voen)) return null;
     LOG(`  ${i}/${n} ${q.seriya + q.nomre} ${q.tarix} ${q.status}`);
-    progress && progress(i, n);
-    await gozle(150);
+    progress && progress(++hazir, n);
+    return q;
+  };
+  let hazir = 0;
+  // qaimələri paralel götürür, nəticəni əvvəlki sıra ilə qaytarır
+  const paralel = async (sira, ad, ugursuzSiyahi) => {
+    const netice = new Array(sira.length).fill(null);
+    let nov = 0;
+    const isci = async () => {
+      while (!DAYANDI()) {
+        const i = nov++;
+        if (i >= sira.length) return;
+        try { netice[i] = await isle(sira[i], ad, i + 1, sira.length); }
+        catch (e) {
+          if (e instanceof SessiyaXetasi) throw e;
+          LOG(`! ${sira[i].serialNumber}: götürülmədi (${String(e.message).slice(0, 90)})`);
+          ugursuzSiyahi.push([sira[i], ad, i + 1, sira.length]);
+        }
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(PARALEL, sira.length) }, isci));
+    return netice.filter(Boolean);
   };
   for (const [kod, ad] of yonler) {
     if (DAYANDI()) break;
@@ -395,22 +423,16 @@ async function qaimeleriTopla({ istiqamet, dan, ya, voen, nomre, sade }, progres
     if (nomre && nomre.length) sira = sira.filter((x) => nomre.includes(x.serialNumber));
     else sira = sira.filter((x) => { const t = tarixTap(x); return t === null || araliqda(t, dan, ya); });
     LOG(`${ad} qaimələr (${ddmmyyyy(dan)} - ${ddmmyyyy(ya)}): ${sira.length} ədəd`);
-    for (let i = 0; i < sira.length; i++) {
-      if (DAYANDI()) { LOG("Dayandırıldı."); break; }
-      try { await isle(sira[i], ad, i + 1, sira.length); }
-      catch (e) {
-        if (e instanceof SessiyaXetasi) throw e;
-        LOG(`! ${sira[i].serialNumber}: götürülmədi (${String(e.message).slice(0, 90)})`);
-        ugursuz.push([sira[i], ad, i + 1, sira.length]);
-      }
-    }
+    hazir = 0;
+    qaimeler.push(...(await paralel(sira, ad, ugursuz)));
+    if (DAYANDI()) LOG("Dayandırıldı.");
   }
   if (ugursuz.length && !DAYANDI()) {
     LOG(`\n${ugursuz.length} qaimə götürülə bilmədi. 15 saniyə sonra bir də cəhd edirəm...`);
     await gozle(15000);
     const qalan = [];
     for (const [x, ad, i, n] of ugursuz) {
-      try { await isle(x, ad, i, n); } catch (e) {
+      try { const q = await isle(x, ad, i, n); if (q) qaimeler.push(q); } catch (e) {
         if (e instanceof SessiyaXetasi) throw e;
         LOG(`! ${x.serialNumber}: yenə götürülmədi`); qalan.push(x.serialNumber);
       }

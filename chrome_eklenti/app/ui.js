@@ -205,6 +205,13 @@
     if (!q.length) return netice([["", `${aralikYazi(o)} aralığında uyğun qaimə tapılmadı.`]]);
     netice([["", "Direktorlar reyestrdən yoxlanılır …"]]);
     const fayllar = []; son = { tta: [], protokol: [], hesab: [] }; const direktorsuz = [], rekvsiz = [];
+    {  // reyestr sorğuları əvvəlcədən, eyni anda 6-sı (nəticə keşə düşür)
+      const voenler = [...new Set(q.flatMap((x) => [x.gonderen_voen, x.qebul_voen]).filter((v) => v && !String(v).endsWith("2")))];
+      let nov = 0;
+      await Promise.all(Array.from({ length: Math.min(6, voenler.length) }, async () => {
+        while (nov < voenler.length) { const v = voenler[nov++]; try { await reyestr(v); } catch (e) {} }
+      }));
+    }
     for (const x of q) {
       const sat = await teref(x.gonderen_voen, x.gonderen_ad), alc = await teref(x.qebul_voen, x.qebul_ad);
       const no = faylAdi(x, sat, alc);
