@@ -141,11 +141,12 @@ function terkibSehifeleri(qaimeler) {
   }
   return sh;
 }
-function aktSehifesi(q, sat, alc, protokol) {
+function aktSehifesi(q, sat, alc, tip, rekv) {
+  tip = _tip(tip);
   const no = q.seriya + q.nomre;
-  const basliq = protokol ? AYAR.protokol_basliq : "TƏHVİL-TƏSLİM AKTI";
+  const basliq = aktBasliq(tip);
   const rows = [[{ v: AYAR.sheher, s: S.QALIN }, "", "", "", "", "", { v: q.tarix, s: S.SAG_QALIN }], [], [{ v: `${basliq} № ${no}`, s: S.TITUL }], [],
-    [{ v: girisMetni(q, sat, alc, protokol), s: S.GIRIS }], [], [], [],
+    [{ v: girisMetni(q, sat, alc, tip), s: S.GIRIS }], [], [], [],
     ["№", "Malın / işin / xidmətin adı", "Kod", "Ölçü vahidi", "Miqdar", "Vahidin qiyməti", "Məbləğ"].map((v) => ({ v, s: S.BASLIQ }))];
   const hundur = { 9: 26 };
   q.mallar.forEach((m, i) => {
@@ -158,7 +159,12 @@ function aktSehifesi(q, sat, alc, protokol) {
   rows.push([null, null, null, null, null, { v: "Cəmi", s: S.YEK_AD }, { f: `SUM(G${ilk}:G${son})`, v: cemi, s: S.YEK_DEG }]);
   rows.push([null, null, null, null, null, { v: edvEtiketi(q), s: S.YEK_AD }, { v: q.edv, s: S.YEK_DEG }]);
   rows.push([null, null, null, null, null, { v: "Yekun", s: S.YEK_AD }, { f: `G${son + 1}+G${son + 2}`, v: r2(cemi + q.edv), s: S.YEK_DEG }]);
-  rows.push([], [{ v: "Yekun məbləğ (yazı ilə): " + meblegYazi(q.yekun), s: S.QALIN }], [{ v: AYAR.iddia_cumlesi, s: S.NORMAL }], [], [], []);
+  rows.push([], [{ v: "Yekun məbləğ (yazı ilə): " + meblegYazi(q.yekun), s: S.QALIN }]);
+  if (tip === "hesab") {
+    rows.push([], [{ v: "SATICININ BANK REKVİZİTLƏRİ", s: S.QALIN }]);
+    for (const [k, ad] of REKV_SETRI) rows.push([{ v: `${ad}: ${(rekv && rekv[k]) || "______________________"}`, s: S.NORMAL }]);
+    rows.push([], [], []);
+  } else rows.push([{ v: AYAR.iddia_cumlesi, s: S.NORMAL }], [], [], []);
   const b = rows.length + 1;
   const blok = (tr, bas) => [bas, tr.ad, `VÖEN: ${tr.voen}`, "", `${tr.rol}: ${tr.direktor}`, "", "", "", "İmza: ______________________", "M.Y."];
   const sb = blok(sat, "SATICI"), ab = blok(alc, "ALICI");
@@ -168,5 +174,5 @@ function aktSehifesi(q, sat, alc, protokol) {
     row[3] = k === 0 || k === 1 || k === 9 ? { v: ab[k], s: S.QALIN } : ab[k];
     rows.push(row);
   }
-  return { ad: protokol ? "Protokol" : "TTA", rows, eni: [5, 46, 15, 11, 9, 13, 14], hundur, sigdir: true, birlesdir: ["A3:G3", "A5:G7"] };
+  return { ad: tip === "protokol" ? "Protokol" : tip === "hesab" ? "Hesab-faktura" : "TTA", rows, eni: [5, 46, 15, 11, 9, 13, 14], hundur, sigdir: true, birlesdir: ["A3:G3", "A5:G7"] };
 }

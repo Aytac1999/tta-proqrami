@@ -146,36 +146,85 @@
   $("#bas-tta").addEventListener("click", () => isle("tta", async () => {
     const o = oxu($("#b-tta"));
     if (!o.dan || !o.ya) return netice([["x", "Tarixləri seçin."]]);
-    const sn = $("[data-f=sened]", $("#b-tta")).value, tta = sn !== "protokol", prot = sn !== "tta";
+    const tta = o.f("tta"), prot = o.f("protokol"), hes = o.f("hesab");
+    if (!tta && !prot && !hes) return netice([["x", "Ən azı bir sənəd növünü seçin."]]);
+    if (hes) {
+      await rekvSaxla(true);  // formada yazılıb, amma saxlanmayıbsa, saxla
+      rekvDict = await rekvizitler();
+      if (!Object.keys(rekvDict).length) return netice([["x", "Hesab-faktura üçün əvvəlcə satıcının bank rekvizitlərini daxil edin."]]);
+    }
         const q = await qaimeleriTopla({ ...o, sade: true }, (i, n) => { progress(i, n); netice([["", `İşləyir … ${i}/${n}`]]); });
     if (!q.length) return netice([["", `${aralikYazi(o)} aralığında uyğun qaimə tapılmadı.`]]);
     netice([["", "Direktorlar reyestrdən yoxlanılır …"]]);
-    const fayllar = []; son = { tta: [], protokol: [] }; const direktorsuz = [];
+    const fayllar = []; son = { tta: [], protokol: [], hesab: [] }; const direktorsuz = [], rekvsiz = [];
     for (const x of q) {
       const sat = await teref(x.gonderen_voen, x.gonderen_ad), alc = await teref(x.qebul_voen, x.qebul_ad);
       const no = x.seriya + x.nomre;
       if (!sat.direktor || !alc.direktor) direktorsuz.push(no);
       if (tta) { fayllar.push({ ad: `TTA_${no}.xlsx`, data: await xlsxYarat([aktSehifesi(x, sat, alc, false)]), mime: XLSX_MIME }); son.tta.push([x, sat, alc]); }
       if (prot) { fayllar.push({ ad: `Protokol_${no}.xlsx`, data: await xlsxYarat([aktSehifesi(x, sat, alc, true)]), mime: XLSX_MIME }); son.protokol.push([x, sat, alc]); }
+      if (hes) {
+        const rk = rekvizitSec(rekvDict, sat.voen);
+        if (!rk) rekvsiz.push(no);
+        fayllar.push({ ad: `Hesab_faktura_${no}.xlsx`, data: await xlsxYarat([aktSehifesi(x, sat, alc, "hesab", rk)]), mime: XLSX_MIME });
+        son.hesab.push([x, sat, alc, rk]);
+      }
       LOG(`+ ${no}: ${alc.ad}  yekun ${fmt(x.yekun)}  direktor: ${alc.direktor || "(tapılmadı)"}`);
     }
     const yer = await saxla(fayllar, `TTA_Protokol_${bugun()}.zip`);
     $("#chap-qutu").hidden = false;
-    $("#chap-tta").hidden = !son.tta.length; $("#chap-prot").hidden = !son.protokol.length;
+    $("#chap-tta").hidden = !son.tta.length; $("#chap-prot").hidden = !son.protokol.length; $("#chap-hesab").hidden = !son.hesab.length;
     const s = [["", `${aralikYazi(o)} aralığında ${q.length} qaimə tapıldı (gələn: ${say(q, "Gələn")}, göndərilən: ${say(q, "Göndərilən")}).`],
-      ["", `Hazırlandı: ${son.tta.length ? son.tta.length + " TTA" : ""}${son.tta.length && son.protokol.length ? ", " : ""}${son.protokol.length ? son.protokol.length + " protokol" : ""} (Excel).`],
+      ["", `Hazırlandı: ${[son.tta.length ? son.tta.length + " TTA" : "", son.protokol.length ? son.protokol.length + " protokol" : "", son.hesab.length ? son.hesab.length + " hesab-faktura" : ""].filter(Boolean).join(", ")} (Excel).`],
       ["ok", `Yerləşdirildi: ${yer}.`]];
     if (direktorsuz.length) s.push(["x", `Direktoru tapılmayan ${direktorsuz.length} qaimə var (imza xanası boş qalıb): ${direktorsuz.slice(0, 5).join(", ")}${direktorsuz.length > 5 ? " …" : ""}`]);
+    if (rekvsiz.length) s.push(["x", `${rekvsiz.length} hesab-fakturada satıcı üçün rekvizit tapılmadı (xanalar boş qalıb): ${rekvsiz.slice(0, 5).join(", ")}${rekvsiz.length > 5 ? " …" : ""}`]);
     s.push(["", "PDF lazımdırsa, aşağıdakı çap düymələrindən istifadə edin."]);
     netice(s);
   }));
 
   function chap(tip) {
-    const s = son[tip]; if (!s.length) return;
-    $("#cap").innerHTML = s.map(([q, a, b]) => aktHtml(q, a, b, tip === "protokol")).join("");
+    const s = son[tip]; if (!s || !s.length) return;
+    $("#cap").innerHTML = s.map(([q, a, b, rk]) => aktHtml(q, a, b, tip, rk)).join("");
     document.body.classList.add("chapda");
     setTimeout(() => { window.print(); document.body.classList.remove("chapda"); $("#cap").innerHTML = ""; }, 100);
   }
   $("#chap-tta").addEventListener("click", () => chap("tta"));
   $("#chap-prot").addEventListener("click", () => chap("protokol"));
+  $("#chap-hesab").addEventListener("click", () => chap("hesab"));
+
+  // ---- satıcının bank rekvizitləri
+  let rekvDict = {};
+  const rekvSahe = () => hamisi("[data-r]", $("#rekv"));
+  const rekvOxu = () => Object.fromEntries(rekvSahe().map((e) => [e.dataset.r, e.value.trim()]));
+  async function rekvSiyahi(secili) {
+    rekvDict = await rekvizitler();
+    const sec = $("#rekv-sec");
+    sec.innerHTML = '<option value="__yeni">— yeni rekvizit —</option>' + Object.keys(rekvDict).map((k) =>
+      `<option value="${_e(k)}">${k === "*" ? "Bütün satıcılar" : _e(k) + (rekvDict[k].ad ? " · " + _e(rekvDict[k].ad) : "")}</option>`).join("");
+    sec.value = secili && rekvDict[secili] ? secili : "__yeni";
+  }
+  function rekvDoldur(k) {
+    const r = rekvDict[k] || {};
+    rekvSahe().forEach((e) => (e.value = e.dataset.r === "voen" ? (k === "*" || k === "__yeni" ? "" : k) : r[e.dataset.r] || ""));
+  }
+  async function rekvSaxla(sakit) {
+    const r = rekvOxu();
+    if (!r.ad && !r.hesab && !r.mh) { if (!sakit) netice([["x", "Ən azı bank adını və ya hesab nömrəsini yazın."]]); return; }
+    const acar = r.voen || "*"; delete r.voen;
+    const d = await rekvizitler(); d[acar] = r;
+    await KOPRU("set", { key: "rekvizitler", value: d });
+    await rekvSiyahi(acar);
+    if (!sakit) netice([["ok", "Rekvizitlər saxlandı (" + (acar === "*" ? "bütün satıcılar üçün" : "VÖEN " + acar) + ")."]]);
+  }
+  $("#rekv-saxla").addEventListener("click", () => rekvSaxla(false));
+  $("#rekv-sec").addEventListener("change", (e) => rekvDoldur(e.target.value));
+  $("#rekv-sil").addEventListener("click", async () => {
+    const k = $("#rekv-sec").value; if (k === "__yeni") return;
+    const d = await rekvizitler(); delete d[k];
+    await KOPRU("set", { key: "rekvizitler", value: d });
+    await rekvSiyahi(); rekvDoldur("__yeni"); netice([["", "Rekvizit silindi."]]);
+  });
+  $("#hesab-sec").addEventListener("change", (e) => { $("#rekv").hidden = !e.target.checked; });
+  rekvSiyahi().then(() => { const k = Object.keys(rekvDict)[0]; if (k) { $("#rekv-sec").value = k; rekvDoldur(k); } });
 })();

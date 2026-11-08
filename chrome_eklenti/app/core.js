@@ -8,6 +8,8 @@ const AYAR_DEF = {
   protokol_yarat: true,
   protokol_basliq: "QİYMƏT RAZILAŞDIRMA PROTOKOLU",
   protokol_giris_sablon: "",
+  hesab_basliq: "HESAB-FAKTURA",
+  hesab_giris_sablon: "Satıcı {satici} (VÖEN {satici_voen}) tərəfindən Alıcı {alici} (VÖEN {alici_voen}) üçün {esas}aşağıda göstərilən mallar üzrə hesab-faktura təqdim edilir. Ödənişin aşağıda göstərilən bank rekvizitlərinə köçürülməsi xahiş olunur.",
   direktor_duzelis: {},
   esas_evezlemeleri: [["müqaviləsi\\s*$", "müqaviləsinə"]],
   tip_adlari: {},
@@ -154,12 +156,20 @@ function esasCumle(q) {
   if (!/əsasən\s*$/.test(es)) es += " əsasən";
   return es + " ";
 }
-function girisMetni(q, sat, alc, protokol) {
+const _tip = (t) => (t === true ? "protokol" : t || "tta");  // köhnə boolean çağırışlarla uyğunluq
+function aktBasliq(t) { t = _tip(t); return t === "protokol" ? AYAR.protokol_basliq : t === "hesab" ? AYAR.hesab_basliq : "TƏHVİL-TƏSLİM AKTI"; }
+function girisMetni(q, sat, alc, tip) {
+  tip = _tip(tip);
   let sablon = AYAR.giris_sablon;
-  if (protokol) sablon = AYAR.protokol_giris_sablon || sablon.replace("bu aktı", "bu protokolu");
+  if (tip === "protokol") sablon = AYAR.protokol_giris_sablon || sablon.replace("bu aktı", "bu protokolu");
+  if (tip === "hesab") sablon = AYAR.hesab_giris_sablon;
   const d = { satici: sat.ad, satici_voen: sat.voen, alici: alc.ad, alici_voen: alc.voen, esas: esasCumle(q) };
   return sablon.replace(/\{(\w+)\}/g, (a, k) => (k in d ? d[k] : a));
 }
+// Hesab-faktura üçün satıcının bank rekvizitləri (istifadəçi özü daxil edir): {"VÖEN" və ya "*": {ad, kod, bvoen, mh, swift, hesab}}
+const REKV_SETRI = [["ad", "Bank"], ["kod", "Bank kodu"], ["bvoen", "Bankın VÖEN-i"], ["mh", "Müxbir hesab (M/H)"], ["swift", "SWIFT"], ["hesab", "Hesab nömrəsi (IBAN)"]];
+async function rekvizitler() { return (await KOPRU("get", { key: "rekvizitler" })) || {}; }
+function rekvizitSec(dict, voen) { return dict[voen] || dict["*"] || null; }
 const edvEtiketi = (q) => (q.cemi && Math.abs(q.edv - r2(q.cemi * 0.18)) < 0.02 ? "ƏDV (18%)" : "ƏDV");
 
 // ------------------------------------------------------------------ e-taxes sorğuları

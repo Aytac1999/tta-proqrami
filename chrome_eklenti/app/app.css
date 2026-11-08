@@ -21,6 +21,8 @@ button.lnk{border:0;background:none;color:#1f4e8c;text-decoration:underline;padd
 #zolaq{height:6px;background:#dde5f0;border-radius:99px;overflow:hidden;margin-top:8px}#dolu{height:100%;width:0;background:#22a05a;transition:width .2s}
 #dayan{margin-top:6px}
 #netice{margin-top:8px;font-size:13px}#netice p{margin:2px 0}#netice .x{color:#c0392b}#netice .ok{color:#17703f;font-weight:600}
+#rekv{margin-top:8px;padding:6px 8px;border:1px dashed #b7c4d6;border-radius:8px;background:#f8fafd}.alt2{font-size:11px;color:#6b7a8c}
+#rekv input[type=text],#rekv select{display:block;width:100%;margin-top:1px;padding:3px 6px;border:1px solid #b7c4d6;border-radius:5px;font:inherit;background:#fff}#rekv label{display:block;font-size:11px;color:#4a5d73;margin-top:5px}
 details{margin-top:6px;font-size:12px;color:#4a5d73}summary{cursor:pointer}
 #jurnal{background:#f3f6fb;border:1px solid #dde5f0;border-radius:6px;padding:6px;max-height:140px;overflow:auto;white-space:pre-wrap;font:11px Consolas,monospace;color:#33475f;margin:4px 0 0}
 #cap{display:none}

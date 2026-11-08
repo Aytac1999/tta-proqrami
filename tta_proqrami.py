@@ -31,7 +31,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph, Table, TableStyle
 
-VERSION = "1.5.2"
+VERSION = "1.5.3"
 ETAX = "https://new.e-taxes.gov.az"
 REYESTR_URL = ETAX + "/api/po/authless/public/v1/authless/findTaxpayer"
 KESH_FAYLI = "direktorlar.json"
@@ -61,7 +61,12 @@ VARSAYILAN = {
                      "Alıcı tərəfindən qəbul edilmişdir."),
     "protokol_yarat": True,  # TTA ilə birlikdə "Qiymət razılaşdırma protokolu" da hazırlansın
     "protokol_basliq": "QİYMƏT RAZILAŞDIRMA PROTOKOLU",
-    "protokol_giris_sablon": "",  # boşdursa TTA mətni götürülür ("aktı" sözü "protokolu" ilə əvəz olunur)
+    "protokol_giris_sablon": "",
+    "hesab_basliq": "HESAB-FAKTURA",
+    "hesab_giris_sablon": ("Satıcı {satici} (VÖEN {satici_voen}) tərəfindən Alıcı {alici} (VÖEN {alici_voen}) üçün {esas}"
+                           "aşağıda göstərilən mallar üzrə hesab-faktura təqdim edilir. Ödənişin aşağıda göstərilən "
+                           "bank rekvizitlərinə köçürülməsi xahiş olunur."),
+    "rekvizitler": {},  # hesab-faktura üçün satıcının bank rekvizitləri: {"VÖEN" və ya "*": {"ad","kod","bvoen","mh","swift","hesab"}}  # boşdursa TTA mətni götürülür ("aktı" sözü "protokolu" ilə əvəz olunur)
     "iddia_cumlesi": "Tərəflərin həcm, keyfiyyət və müddətə dair bir-birinə qarşı iddiası yoxdur.",
     "direktor_duzelis": {},                                    # {"VÖEN": "Ad Soyad Ata adı oğlu"}
     "esas_evezlemeleri": [["müqaviləsi\\s*$", "müqaviləsinə"]],  # [regex, əvəz]
@@ -650,12 +655,47 @@ def esas_cumle(q):
     return es + " "
 
 
-def giris_metni(q, sat, alc, protokol=False):
+def _tip(x):
+    return "protokol" if x is True else (x or "tta")
+
+
+def akt_basliq(tip):
+    tip = _tip(tip)
+    return AYAR["protokol_basliq"] if tip == "protokol" else AYAR["hesab_basliq"] if tip == "hesab" else "TƏHVİL-TƏSLİM AKTI"
+
+
+def giris_metni(q, sat, alc, tip="tta"):
+    tip = _tip(tip)
     sablon = AYAR["giris_sablon"]
-    if protokol:
+    if tip == "protokol":
         sablon = AYAR.get("protokol_giris_sablon") or sablon.replace("bu aktı", "bu protokolu")
+    elif tip == "hesab":
+        sablon = AYAR["hesab_giris_sablon"]
     return sablon.format(satici=sat["ad"], satici_voen=sat["voen"], alici=alc["ad"],
-                                       alici_voen=alc["voen"], esas=esas_cumle(q))
+                         alici_voen=alc["voen"], esas=esas_cumle(q))
+
+
+REKV_SETRI = (("ad", "Bank"), ("kod", "Bank kodu"), ("bvoen", "Bankın VÖEN-i"), ("mh", "Müxbir hesab (M/H)"),
+              ("swift", "SWIFT"), ("hesab", "Hesab nömrəsi (IBAN)"))
+
+
+def rekv_tap(voen):
+    d = AYAR.get("rekvizitler") or {}
+    return d.get(voen) or d.get("*") or {}
+
+
+def rekv_saxla(voen, deyerler):
+    """Rekvizitləri yerli ayarlar.json-a yaz (voen boşdursa '*' = bütün satıcılar)."""
+    try:
+        with open(AYAR_FAYLI, encoding="utf-8") as f:
+            yerli = json.load(f)
+    except (OSError, ValueError):
+        yerli = {}
+    d = yerli.setdefault("rekvizitler", {})
+    d[voen or "*"] = {k: (deyerler.get(k) or "").strip() for k, _ in REKV_SETRI}
+    with open(AYAR_FAYLI, "w", encoding="utf-8") as f:
+        json.dump(yerli, f, ensure_ascii=False, indent=2)
+    AYAR.setdefault("rekvizitler", {})[voen or "*"] = d[voen or "*"]
 
 
 def edv_etiketi(q):
@@ -664,8 +704,9 @@ def edv_etiketi(q):
 
 # --------------------------------------------------------------------------- TTA PDF
 def tta_pdf(yol, q, sat, alc, protokol=False):
+    tip = _tip(protokol)
     no = q["seriya"] + q["nomre"]
-    basliq = AYAR["protokol_basliq"] if protokol else "TƏHVİL-TƏSLİM AKTI"
+    basliq = akt_basliq(tip)
     W, H = letter
     c = canvas.Canvas(yol, pagesize=letter)
     c.setTitle(f"{basliq.capitalize()} {no}")
@@ -674,7 +715,7 @@ def tta_pdf(yol, q, sat, alc, protokol=False):
     c.setFont("FB", 8.5); c.drawString(L, y, AYAR["sheher"]); c.drawRightString(R, y, q["tarix"])
     y -= 36; c.setFont("FB", 11); c.drawCentredString(W / 2, y, f"{basliq} № {no}")
     y -= 24
-    p = Paragraph(giris_metni(q, sat, alc, protokol), ParagraphStyle("p", fontName="F", fontSize=8, leading=10.5))
+    p = Paragraph(giris_metni(q, sat, alc, tip), ParagraphStyle("p", fontName="F", fontSize=8, leading=10.5))
     w, h = p.wrap(R - L, 200); p.drawOn(c, L, y - h); y -= h + 14
 
     hs = ParagraphStyle("h", fontName="FB", fontSize=7.5, leading=9, alignment=TA_CENTER)
@@ -710,8 +751,18 @@ def tta_pdf(yol, q, sat, alc, protokol=False):
     c.setFont("FB", 8); c.drawString(L, y, "Yekun məbləğ (yazı ilə):")
     x = L + c.stringWidth("Yekun məbləğ (yazı ilə): ", "FB", 8)
     c.setFont("F", 8); c.drawString(x, y, mebleg_yazi(q["yekun"]))
-    y -= 13; c.drawString(L, y, AYAR["iddia_cumlesi"])
-    y -= 52
+    if tip == "hesab":
+        rk = rekv_tap(sat["voen"])
+        if y - 230 < 60:
+            c.showPage(); y = H - 52
+        y -= 26; c.setFont("FB", 8); c.drawString(L, y, "SATICININ BANK REKVİZİTLƏRİ")
+        for k, ad in REKV_SETRI:
+            y -= 12; c.setFont("F", 8); c.drawString(L, y, f"{ad}: ")
+            c.setFont("FB", 8); c.drawString(L + c.stringWidth(f"{ad}: ", "F", 8), y, rk.get(k) or "______________________")
+        y -= 40
+    else:
+        y -= 13; c.drawString(L, y, AYAR["iddia_cumlesi"])
+        y -= 52
     mid = W / 2 + 20
 
     def blok(x0, basliq, tr):
@@ -729,9 +780,10 @@ def tta_pdf(yol, q, sat, alc, protokol=False):
 
 # --------------------------------------------------------------------------- TTA Excel
 def tta_xlsx(yol, q, sat, alc, protokol=False):
+    tip = _tip(protokol)
     no = q["seriya"] + q["nomre"]
-    basliq = AYAR["protokol_basliq"] if protokol else "TƏHVİL-TƏSLİM AKTI"
-    wb = Workbook(); ws = wb.active; ws.title = "Protokol" if protokol else "TTA"
+    basliq = akt_basliq(tip)
+    wb = Workbook(); ws = wb.active; ws.title = {"protokol": "Protokol", "hesab": "Hesab-faktura"}.get(tip, "TTA")
     for col, wd in zip("ABCDEFG", [5, 46, 15, 11, 9, 13, 14]):
         ws.column_dimensions[col].width = wd
     thin = Side(style="thin", color="8896AA"); bd = Border(left=thin, right=thin, top=thin, bottom=thin)
@@ -741,7 +793,7 @@ def tta_xlsx(yol, q, sat, alc, protokol=False):
     ws["G1"] = q["tarix"]; ws["G1"].font = ar(bold=True); ws["G1"].alignment = Alignment(horizontal="right")
     ws.merge_cells("A3:G3"); ws["A3"] = f"{basliq} № {no}"
     ws["A3"].font = Font(name="Arial", bold=True, size=12); ws["A3"].alignment = Alignment(horizontal="center")
-    ws.merge_cells("A5:G7"); ws["A5"] = giris_metni(q, sat, alc, protokol); ws["A5"].font = ar()
+    ws.merge_cells("A5:G7"); ws["A5"] = giris_metni(q, sat, alc, tip); ws["A5"].font = ar()
     ws["A5"].alignment = Alignment(wrap_text=True, vertical="top")
     r = 9
     for j, h in enumerate(["№", "Malın / işin / xidmətin adı", "Kod", "Ölçü vahidi", "Miqdar", "Vahidin qiyməti", "Məbləğ"], 1):
@@ -767,8 +819,15 @@ def tta_xlsx(yol, q, sat, alc, protokol=False):
         a.alignment = Alignment(horizontal="right"); b.number_format = "#,##0.00"
     r = son + 5
     ws.cell(r, 1, "Yekun məbləğ (yazı ilə): " + mebleg_yazi(q["yekun"])).font = ar(bold=True)
-    ws.cell(r + 1, 1, AYAR["iddia_cumlesi"]).font = ar()
-    r += 4
+    if tip == "hesab":
+        rk = rekv_tap(sat["voen"])
+        ws.cell(r + 2, 1, "SATICININ BANK REKVİZİTLƏRİ").font = ar(bold=True)
+        for i, (k, ad) in enumerate(REKV_SETRI, 3):
+            ws.cell(r + i, 1, f"{ad}: {rk.get(k) or '______________________'}").font = ar()
+        r += 11
+    else:
+        ws.cell(r + 1, 1, AYAR["iddia_cumlesi"]).font = ar()
+        r += 4
     for col, bas, tr in ((1, "SATICI", sat), (4, "ALICI", alc)):
         ws.cell(r, col, bas).font = ar(bold=True)
         ws.cell(r + 1, col, tr["ad"]).font = ar(bold=True)
@@ -832,19 +891,36 @@ def sehife(ws, bas, enler):
 
 
 # --------------------------------------------------------------------------- iş axını
+def senedler(sened):
+    """'ikisi' (köhnə: TTA + protokol), 'hamisi', və ya vergüllə: 'tta,protokol,hesab' -> sənəd növləri çoxluğu"""
+    sened = (sened or "ikisi").lower()
+    if sened == "hamisi":
+        return {"tta", "protokol", "hesab"}
+    if sened == "ikisi":
+        return {"tta", "protokol"} if AYAR.get("protokol_yarat", True) else {"tta"}
+    return {x.strip() for x in sened.split(",") if x.strip() in ("tta", "protokol", "hesab")}
+
+
 def tta_yaz(q, cixis, oflayn, sened="ikisi"):
-    """sened: 'ikisi' (TTA + protokol), 'tta' (yalnız TTA), 'protokol' (yalnız qiymət razılaşdırma protokolu)"""
+    """sened: 'ikisi' (TTA + protokol), 'hamisi', yaxud 'tta' / 'protokol' / 'hesab' (vergüllə birləşdirmək olar)"""
+    sec = senedler(sened)
     sat = teref(q["gonderen_voen"], q["gonderen_ad"], oflayn)
     alc = teref(q["qebul_voen"], q["qebul_ad"], oflayn)
     ad = q["seriya"] + q["nomre"]
-    if sened in ("ikisi", "tta"):
+    if "tta" in sec:
         tta_xlsx(os.path.join(cixis, f"TTA_{ad}.xlsx"), q, sat, alc)
         tta_pdf(os.path.join(cixis, f"TTA_{ad}.pdf"), q, sat, alc)
         print(f"+ TTA_{ad}: {alc['ad']}  yekun {fmt(q['yekun'])}  direktor: {alc['direktor'] or '(tapılmadı)'}")
-    if sened == "protokol" or (sened == "ikisi" and AYAR.get("protokol_yarat", True)):
-        tta_xlsx(os.path.join(cixis, f"Protokol_{ad}.xlsx"), q, sat, alc, True)
-        tta_pdf(os.path.join(cixis, f"Protokol_{ad}.pdf"), q, sat, alc, True)
+    if "protokol" in sec:
+        tta_xlsx(os.path.join(cixis, f"Protokol_{ad}.xlsx"), q, sat, alc, "protokol")
+        tta_pdf(os.path.join(cixis, f"Protokol_{ad}.pdf"), q, sat, alc, "protokol")
         print(f"+ Protokol_{ad}: {alc['ad']}  yekun {fmt(q['yekun'])}")
+    if "hesab" in sec:
+        if not rekv_tap(sat["voen"]):
+            print(f"  ! Hesab-faktura {ad}: satıcı ({sat['voen']}) üçün bank rekvizitləri daxil edilməyib - xanalar boş qalır")
+        tta_xlsx(os.path.join(cixis, f"Hesab_faktura_{ad}.xlsx"), q, sat, alc, "hesab")
+        tta_pdf(os.path.join(cixis, f"Hesab_faktura_{ad}.pdf"), q, sat, alc, "hesab")
+        print(f"+ Hesab_faktura_{ad}: {alc['ad']}  yekun {fmt(q['yekun'])}")
 
 
 def pdf_rejimi(girisler, cixis, oflayn, sened="ikisi"):
@@ -964,8 +1040,13 @@ def menyu(a):
     print("  3) e-taxes: TTA hazırla - seçdiyim tarix aralığında (Excel + PDF)")
     sec = input("Seçim (1/2/3): ").strip()
     if sec in ("1", "3"):
-        print("  Hansı sənəd hazırlansın?  1) TTA + Qiymət razılaşdırma protokolu   2) yalnız TTA   3) yalnız protokol")
-        a.sened = {"2": "tta", "3": "protokol"}.get(input("Seçim (1/2/3) [1]: ").strip(), "ikisi")
+        print("  Hansı sənəd hazırlansın?  1) TTA + protokol   2) yalnız TTA   3) yalnız protokol   4) hesab-faktura   5) hamısı")
+        a.sened = {"2": "tta", "3": "protokol", "4": "hesab", "5": "hamisi"}.get(input("Seçim (1-5) [1]: ").strip(), "ikisi")
+        if "hesab" in senedler(a.sened) and not AYAR.get("rekvizitler"):
+            print("  Hesab-faktura üçün satıcının bank rekvizitlərini bir dəfə daxil edin (boş buraxsanız, xanalar boş qalır):")
+            rk = {k: input(f"    {ad}: ").strip() for k, ad in REKV_SETRI}
+            if any(rk.values()):
+                rekv_saxla(input("    Hansı satıcı VÖEN üçün? (boş = hamısı): ").strip(), rk)
     if sec == "1":
         a.giris = [input("Qaimə PDF-lərinin qovluğu (cari qovluq üçün . yazın): ").strip() or "."]
         return a
@@ -1051,9 +1132,8 @@ def pencere_rejimi(sinaq=False):
     v_ya = tk.StringVar(value=bu.strftime("%d.%m.%Y"))
     v_voen, v_nomre = tk.StringVar(), tk.StringVar()
     v_tarixce = tk.BooleanVar(value=True)
-    SENED = {"TTA + Protokol": "ikisi", "Yalnız TTA": "tta", "Yalnız protokol": "protokol"}
-    v_sened_ad = tk.StringVar(value="TTA + Protokol")
-    v_sened = type("V", (), {"get": staticmethod(lambda: SENED.get(v_sened_ad.get(), "ikisi"))})()
+    v_s_tta, v_s_prot, v_s_hes = tk.BooleanVar(value=True), tk.BooleanVar(value=True), tk.BooleanVar(value=False)
+    v_sened = type("V", (), {"get": staticmethod(lambda: ",".join(n for n, v in (("tta", v_s_tta), ("protokol", v_s_prot), ("hesab", v_s_hes)) if v.get()))})()
     v_pdf = tk.StringVar(value=os.getcwd())
     v_cixis = tk.StringVar(value=os.path.join(os.getcwd(), "cixis"))
     v_durum = tk.StringVar(value="Hazırdır. Seçim edib \"Başla\" düyməsinə basın.")
@@ -1074,9 +1154,32 @@ def pencere_rejimi(sinaq=False):
         ttk.Radiobutton(f1, text=metn, value=deyer, variable=v_rejim, command=lambda: gorunus()).pack(side="left", padx=(8, 4), pady=2)
     f1b = ttk.Frame(kok)
     f1b.pack(fill="x", padx=8, pady=(0, 2))
-    ttk.Label(f1b, text="TTA / PDF rejimində sənəd:").pack(side="left", padx=(8, 4))
-    cb_sened = ttk.Combobox(f1b, textvariable=v_sened_ad, values=list(SENED), state="readonly", width=18)
-    cb_sened.pack(side="left")
+    ttk.Label(f1b, text="Sənədlər:").pack(side="left", padx=(8, 4))
+    sened_vid = [ttk.Checkbutton(f1b, text=t, variable=v) for t, v in (("TTA", v_s_tta), ("Protokol", v_s_prot), ("Hesab-faktura", v_s_hes))]
+    for w in sened_vid:
+        w.pack(side="left", padx=4)
+
+    def rekvizit_penceresi():
+        from tkinter import Toplevel
+        pen = Toplevel(kok)
+        pen.title("Satıcının bank rekvizitləri (hesab-faktura üçün)")
+        sah = {}
+        ttk.Label(pen, text="Hansı satıcı VÖEN üçün (boş = bütün satıcılar):").grid(row=0, column=0, sticky="w", padx=8, pady=(8, 0))
+        v_rv = tk.StringVar()
+        ttk.Entry(pen, textvariable=v_rv, width=40).grid(row=0, column=1, padx=8, pady=(8, 0))
+        for i, (k, ad) in enumerate(REKV_SETRI, 1):
+            ttk.Label(pen, text=ad + ":").grid(row=i, column=0, sticky="w", padx=8, pady=2)
+            sah[k] = tk.StringVar(value=rekv_tap("").get(k) or "")
+            ttk.Entry(pen, textvariable=sah[k], width=40).grid(row=i, column=1, padx=8, pady=2)
+
+        def saxla():
+            rekv_saxla(v_rv.get().strip(), {k: v.get() for k, v in sah.items()})
+            messagebox.showinfo("Saxlandı", "Rekvizitlər saxlandı.", parent=pen)
+            pen.destroy()
+        ttk.Button(pen, text="Saxla", command=saxla).grid(row=len(REKV_SETRI) + 1, column=1, sticky="e", padx=8, pady=8)
+
+    ttk.Button(f1b, text="Rekvizitlər…", command=rekvizit_penceresi).pack(side="left", padx=(10, 0))
+    cb_sened = type("CB", (), {"state": staticmethod(lambda st: [w.state(st) for w in sened_vid])})()
 
     # --- PDF
     f2 = blok(kok, "PDF qaimələrin qovluğu")
@@ -1246,6 +1349,9 @@ def pencere_rejimi(sinaq=False):
             a.nomre = [x.upper() for x in v_nomre.get().split()] or None
             if rj == "tta":
                 a.tta = a.yalniz_tta = a.sade = True
+                if not a.sened:
+                    messagebox.showerror("Sənəd seçilməyib", "TTA, protokol və ya hesab-fakturadan ən azı birini seçin.")
+                    return
             else:
                 a.sade = not v_tarixce.get()
         DAYAN.clear()
@@ -1318,7 +1424,7 @@ def main():
     ap.add_argument("--nomre", nargs="*", help="yalnız bu qaimə nömrələri")
     ap.add_argument("--sade", action="store_true", help="tarixçə/versiya/əlaqəli qaimələri götürmə (daha sürətli)")
     ap.add_argument("--tta", action="store_true", help="e-taxes rejimində hər qaimə üçün TTA da hazırla")
-    ap.add_argument("--sened", choices=["ikisi", "tta", "protokol"], default="ikisi", help="TTA + protokol / yalnız TTA / yalnız protokol")
+    ap.add_argument("--sened", default="ikisi", help="ikisi (TTA+protokol) | hamisi | vergüllə: tta,protokol,hesab")
     ap.add_argument("--cixis", default="cixis")
     ap.add_argument("--oflayn", action="store_true", help="reyestrə müraciət etmə")
     ap.add_argument("--pencere", action="store_true", help="proqram pəncərəsi ilə işlə (qara pəncərə əvəzinə)")
