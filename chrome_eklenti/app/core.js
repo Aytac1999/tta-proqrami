@@ -22,7 +22,8 @@ const STATUS_AZ = {
   approved: "Təsdiqləndi", onApproval: "Təsdiq gözləyir", approvedBySystem: "Sistem tərəfindən təsdiqlənib",
   updateApproval: "Dəyişiklik təsdiqi gözləyir", updateRequested: "Dəyişiklik tələb olunub",
   cancelRequested: "Ləğv tələb olunub", onApprovalEdited: "Düzəliş təsdiq gözləyir", deactivated: "Ləğv edilib",
-  cancelationRefused: "Ləğvetmə rədd edilib", correctionRefused: "Düzəliş rədd edilib",
+  cancelationRefused: "Ləğvetmə rədd edilib", deleted: "Silindi", deletedBySystem: "Sistem tərəfindən silindi",
+  cancelled: "Ləğv edilib", canceled: "Ləğv edilib", passive: "Passiv", correctionRefused: "Düzəliş rədd edilib",
 };
 const NOV_AZ = { current: "Cari", corrected: "Düzəliş edilmiş" };
 const TIP_AZ = {
@@ -374,9 +375,11 @@ function tarixceXulase(ek) {
   const tes = ev.filter((x) => ["approved", "approvedBySystem"].includes(x.status));
   if (gond.length) r.gonderildi = tarixSaat(gond[0].modifiedAt);
   if (tes.length) { const son = tes[tes.length - 1]; r.tesdiqlendi = tarixSaat(son.modifiedAt); r.tesdiq_eden = son.userName || ""; }
-  const leg = ev.filter((x) => x.status === "deactivated");
+  const leg = ev.filter((x) => ["deactivated", "cancelled", "canceled"].includes(x.status));
+  const sil = ev.filter((x) => ["deleted", "deletedBySystem"].includes(x.status));
   const legG = ev.filter((x) => x.status === "cancelRequested");
   if (leg.length) r.legv = "Ləğv edildi: " + tarixSaat(leg[leg.length - 1].modifiedAt);
+  else if (sil.length) r.legv = "Silindi: " + tarixSaat(sil[sil.length - 1].modifiedAt);
   else if (legG.length) r.legv = "Ləğvə göndərildi: " + tarixSaat(legG[legG.length - 1].modifiedAt);
   return r;
 }

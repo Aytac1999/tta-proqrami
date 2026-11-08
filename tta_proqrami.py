@@ -31,7 +31,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph, Table, TableStyle
 
-VERSION = "1.5.12"
+VERSION = "1.5.13"
 ETAX = "https://new.e-taxes.gov.az"
 REYESTR_URL = ETAX + "/api/po/authless/public/v1/authless/findTaxpayer"
 KESH_FAYLI = "direktorlar.json"
@@ -49,6 +49,11 @@ STATUS_AZ = {
     "deactivated": "Ləğv edilib",
     "cancelationRefused": "Ləğvetmə rədd edilib",
     "correctionRefused": "Düzəliş rədd edilib",
+    "deleted": "Silindi",
+    "deletedBySystem": "Sistem tərəfindən silindi",
+    "cancelled": "Ləğv edilib",
+    "canceled": "Ləğv edilib",
+    "passive": "Passiv",
 }
 
 # --------------------------------------------------------------------------- ayarlar
@@ -647,10 +652,13 @@ def tarixce_xulase(ek):
     if tes:
         r["tesdiqlendi"] = tarix_saat(tes[-1].get("modifiedAt"))  # SON təsdiq
         r["tesdiq_eden"] = tes[-1].get("userName") or ""
-    leg = [x for x in ev if x.get("status") == "deactivated"]
+    leg = [x for x in ev if x.get("status") in ("deactivated", "cancelled", "canceled")]
+    sil = [x for x in ev if x.get("status") in ("deleted", "deletedBySystem")]
     legg = [x for x in ev if x.get("status") == "cancelRequested"]
     if leg:
         r["legv"] = "Ləğv edildi: " + tarix_saat(leg[-1].get("modifiedAt"))
+    elif sil:
+        r["legv"] = "Silindi: " + tarix_saat(sil[-1].get("modifiedAt"))
     elif legg:
         r["legv"] = "Ləğvə göndərildi: " + tarix_saat(legg[-1].get("modifiedAt"))
     return r
