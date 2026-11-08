@@ -126,7 +126,7 @@ async function isle(m) {
   if (m.t === "papka_icaze") { return !!(await papkaIcaze(true)); }
   if (m.t === "papka_yaz") {
     const h = await papkaIcaze(false);
-    if (!h) return { xeta: "papkaya yazma icazəsi yoxdur" };
+    if (!h) return { xeta: "qovluğa yazma icazəsi yoxdur" };
     for (const f of m.fayllar) {
       const fh = await h.getFileHandle(f.ad, { create: true });
       const w = await fh.createWritable(); await w.write(f.bytes); await w.close();

@@ -63,12 +63,12 @@
   async function papkaGoster() {
     const ad = await KOPRU("papka_ad");
     papkaVar = !!ad;
-    $("#papka-ad").textContent = ad ? "papka «" + ad + "»" : "Yükləmələr qovluğu";
+    $("#papka-ad").textContent = ad ? "qovluq «" + ad + "»" : "Yükləmələr qovluğu";
     $("#papka-sil").hidden = !ad;
   }
   $("#papka-sec").addEventListener("click", async () => {
     const r = await KOPRU("papka_sec");
-    if (r && r.xeta) { if (r.xeta !== "ləğv edildi") netice([["x", "Papka seçilmədi: " + r.xeta + ". Fayllar Yükləmələr qovluğuna düşəcək."]]); return; }
+    if (r && r.xeta) { if (r.xeta !== "ləğv edildi") netice([["x", "Qovluq seçilmədi: " + r.xeta + ". Fayllar Yükləmələr qovluğuna düşəcək."]]); return; }
     papkaGoster();
   });
   $("#papka-sil").addEventListener("click", async () => { await KOPRU("papka_sil"); papkaGoster(); });
@@ -91,8 +91,8 @@
   async function saxla(fayllar, zipAdi) {
     if (papkaVar && icaze) {
       const r = await KOPRU("papka_yaz", { fayllar: fayllar.map((f) => ({ ad: f.ad, bytes: f.data.buffer.slice(f.data.byteOffset, f.data.byteOffset + f.data.byteLength) })) });
-      if (r && r.ok) return `papka «${r.ad}» (${r.ok} fayl)`;
-      LOG("Papkaya yazılmadı: " + ((r && r.xeta) || "naməlum xəta") + ". Yükləmələrə düşür.");
+      if (r && r.ok) return `qovluq «${r.ad}» (${r.ok} fayl)`;
+      LOG("Qovluğa yazılmadı: " + ((r && r.xeta) || "naməlum xəta") + ". Yükləmələrə düşür.");
     }
     if (zipAdi && fayllar.length > 1) {
       await KOPRU("yukle", { ad: zipAdi, bytes: await zipYarat(fayllar.map((f) => ({ ad: f.ad, data: f.data })), false), mime: "application/zip" });
