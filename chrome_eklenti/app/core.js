@@ -219,8 +219,7 @@ class ETaxes {
     const yaS = yaG.toISOString().slice(0, 10).split("-").reverse().join("-");
     const govde = {
       sortBy: "creationDate", sortAsc: true,
-      statuses: ["approved", "onApproval", "updateApproval", "updateRequested", "cancelRequested", "approvedBySystem",
-        "onApprovalEdited", "deactivated", "cancelationRefused", "correctionRefused"],
+      statuses: null,  // null = bütün statuslar (e-taxes-də "Bütün statuslar")
       types: ["current", "corrected"],
       kinds: ["defaultInvoice", "agent", "resale", "recycling", "taxCodex163", "taxCodex177_5", "returnInvoice", "returnByAgent",
         "returnRecycled", "exportNoteInvoice", "exciseGoodsTransfer", "advanceInvoice"],
@@ -228,10 +227,17 @@ class ETaxes {
       receiverName: null, creationDateFrom: `${ddmmyyyy(dan)} 00:00`, creationDateTo: `${yaS} 00:00`,
       amountFrom: null, amountTo: null, offset: 0, maxCount: 50, actionOwner: null,
     };
-    const netice = []; let ilk = true;
+    const STATUS_SIYAHI = ["approved", "onApproval", "updateApproval", "updateRequested", "cancelRequested", "approvedBySystem",
+      "onApprovalEdited", "deactivated", "cancelationRefused", "correctionRefused"];
+    const netice = []; let ilk = true, merhele = 0;
     for (;;) {
       const r = await this.istek("POST", `/api/po/invoice/public/v2/invoice/find.${istiqamet}`, { json: govde });
-      if (r.status === 400 && ilk) { Object.assign(govde, { statuses: null, types: null, kinds: null }); ilk = false; continue; }
+      if (r.status === 400 && ilk) {
+        merhele++;
+        if (merhele === 1) govde.statuses = STATUS_SIYAHI;                       // 2) köhnə status siyahısı
+        else { Object.assign(govde, { statuses: null, types: null, kinds: null }); ilk = false; }  // 3) hamısı boş
+        continue;
+      }
       ilk = false;
       if (r.status >= 400) throw new Error("siyahı alınmadı (" + r.status + ")");
       const j = JSON.parse(r.text);

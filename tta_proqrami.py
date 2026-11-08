@@ -31,7 +31,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph, Table, TableStyle
 
-VERSION = "1.5.4"
+VERSION = "1.5.5"
 ETAX = "https://new.e-taxes.gov.az"
 REYESTR_URL = ETAX + "/api/po/authless/public/v1/authless/findTaxpayer"
 KESH_FAYLI = "direktorlar.json"
@@ -435,8 +435,7 @@ class ETaxes:
         ya_g = datetime.datetime.strptime(ya, "%d-%m-%Y") + datetime.timedelta(days=1)
         govde = {
             "sortBy": "creationDate", "sortAsc": True,
-            "statuses": ["approved", "onApproval", "updateApproval", "updateRequested", "cancelRequested",
-                         "approvedBySystem", "onApprovalEdited", "deactivated", "cancelationRefused", "correctionRefused"],
+            "statuses": None,  # None = bütün statuslar
             "types": ["current", "corrected"],
             "kinds": ["defaultInvoice", "agent", "resale", "recycling", "taxCodex163", "taxCodex177_5", "returnInvoice",
                       "returnByAgent", "returnRecycled", "exportNoteInvoice", "exciseGoodsTransfer", "advanceInvoice"],
@@ -445,12 +444,18 @@ class ETaxes:
             "creationDateFrom": f"{dan} 00:00", "creationDateTo": ya_g.strftime("%d-%m-%Y 00:00"),
             "amountFrom": None, "amountTo": None, "offset": 0, "maxCount": 50, "actionOwner": None,
         }
-        netice, ilk = [], True
+        netice, ilk, merhele = [], True, 0
         while True:
             r = self._istek("POST", f"/api/po/invoice/public/v2/invoice/find.{istiqamet}", json=govde)
-            if r.status_code == 400 and ilk:  # gələnlər üçün siyahı sahələri fərqli ola bilər
-                govde.update(statuses=None, types=None, kinds=None)
-                ilk = False
+            if r.status_code == 400 and ilk:  # server "hamısı" qəbul etməsə: köhnə siyahı, sonra hamısı boş
+                merhele += 1
+                if merhele == 1:
+                    govde["statuses"] = ["approved", "onApproval", "updateApproval", "updateRequested", "cancelRequested",
+                                         "approvedBySystem", "onApprovalEdited", "deactivated", "cancelationRefused",
+                                         "correctionRefused"]
+                else:
+                    govde.update(statuses=None, types=None, kinds=None)
+                    ilk = False
                 continue
             ilk = False
             r.raise_for_status()
