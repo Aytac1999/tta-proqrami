@@ -125,20 +125,6 @@ function terkibSehifeleri(qaimeler) {
       { v: m.qiymet, s: S.TQIYMET }, { v: m.mebleg, s: S.TPUL }, { v: m.edv, s: S.TPUL }, { v: m.yekun, s: S.TPUL }, m.sebeb || "", q.legv || "", q.bagli_avans || "", q.bagli_normal || ""]);
   }
   const sh = [{ ad: "Qaimə tərkibi", rows: ana, eni, dondur: true, suzgec: bas.length }];
-  if (qaimeler.some((q) => q.ek)) {
-    const w2 = [bs(["Qaimə", "Tarix", "İstifadəçi", "Status", "Qeyd"])], w3 = [bs(["Qaimə", "Versiya №", "Cari", "Yekun məbləğ", "ƏDV məbləği", "Vergi", "Dəyişdirən", "Dəyişmə tarixi"])];
-    const w4 = [bs(["Bu qaimə", "Əlaqəli qaimə №", "Tarix", "Növ", "Status", "Üst qaimə", "Tərəf (VÖEN/ad)", "Xam məlumat"])];
-    for (const q of qaimeler) {
-      const no = q.seriya + q.nomre, ek = q.ek || {};
-      [...(ek.events || [])].sort((a, b) => String(a.modifiedAt || "").localeCompare(String(b.modifiedAt || "")))
-        .forEach((e) => w2.push([no, tarixSaat(e.modifiedAt), e.userName || "", STATUS_AZ[e.status] || e.status || "", String(e.comment || "")]));
-      (ek.versions || []).forEach((v) => w3.push([no, v.versionNumber, v.current ? "Bəli" : "Xeyr", v.amount, v.vatAmount, v.taxAmount, v.modifiedBy || "", tarixSaat(v.modifiedAt)]));
-      (q.elaqeli_siyahi || []).forEach((e) => w4.push([no, e.nomre, e.tarix, e.novu, e.status, e.ata, e.teref, e.xam]));
-    }
-    sh.push({ ad: "Tarixçə", rows: w2, eni: [20, 17, 36, 28, 40], dondur: true, suzgec: 5 },
-      { ad: "Versiyalar", rows: w3, eni: [20, 10, 8, 14, 14, 10, 36, 17], dondur: true, suzgec: 8 },
-      { ad: "Əlaqəli qaimələr", rows: w4, eni: [20, 20, 17, 30, 24, 20, 30, 80], dondur: true, suzgec: 8 });
-  }
   return sh;
 }
 function aktSehifesi(q, sat, alc, tip, rekv) {

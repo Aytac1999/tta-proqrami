@@ -31,7 +31,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph, Table, TableStyle
 
-VERSION = "1.5.18"
+VERSION = "1.5.19"
 ETAX = "https://new.e-taxes.gov.az"
 REYESTR_URL = ETAX + "/api/po/authless/public/v1/authless/findTaxpayer"
 KESH_FAYLI = "direktorlar.json"
@@ -942,24 +942,6 @@ def terkib_xlsx(yol, qaimeler):
     for row in ws.iter_rows(min_row=2):
         for x in row[23:28]:
             x.number_format = "#,##0.00#######" if x.column == 25 else "#,##0.00"
-    if any(q.get("ek") for q in qaimeler):
-        w2 = wb.create_sheet("Tarixçə")
-        sehife(w2, ["Qaimə", "Tarix", "İstifadəçi", "Status", "Qeyd"], [20, 17, 36, 28, 40])
-        w3 = wb.create_sheet("Versiyalar")
-        sehife(w3, ["Qaimə", "Versiya №", "Cari", "Yekun məbləğ", "ƏDV məbləği", "Vergi", "Dəyişdirən", "Dəyişmə tarixi"],
-               [20, 10, 8, 14, 14, 10, 36, 17])
-        w4 = wb.create_sheet("Əlaqəli qaimələr")
-        sehife(w4, ["Bu qaimə", "Əlaqəli qaimə №", "Tarix", "Növ", "Status", "Üst qaimə", "Tərəf (VÖEN/ad)", "Xam məlumat"], [20, 20, 17, 30, 24, 20, 30, 80])
-        for q in qaimeler:
-            no, ek = q["seriya"] + q["nomre"], q.get("ek") or {}
-            for e in sorted(ek.get("events", []), key=lambda x: x.get("modifiedAt") or ""):
-                w2.append([no, tarix_saat(e.get("modifiedAt")), e.get("userName") or "",
-                           STATUS_AZ.get(e.get("status"), e.get("status") or ""), str(e.get("comment") or "")])
-            for v in ek.get("versions", []):
-                w3.append([no, v.get("versionNumber"), "Bəli" if v.get("current") else "Xeyr", v.get("amount"),
-                           v.get("vatAmount"), v.get("taxAmount"), v.get("modifiedBy") or "", tarix_saat(v.get("modifiedAt"))])
-            for e in q.get("elaqeli_siyahi", []):
-                w4.append([no, e["nomre"], e["tarix"], e["novu"], e["status"], e["ata"], e["teref"], e["xam"]])
     wb.save(yol)
 
 
