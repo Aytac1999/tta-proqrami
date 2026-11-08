@@ -19,6 +19,21 @@
     hamisi(".bolme").forEach((s) => (s.hidden = s.id !== "b-" + b.dataset.b));
   }));
 
+  // tarix: gün / ay / il (brauzerin ay/gün/il formatından asılı olmasın deyə üç ayrı seçici)
+  const AYLAR = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "İyun", "İyul", "Avqust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr"];
+  function tarixQur(div) {
+    const mk = (secimler) => { const s = document.createElement("select"); secimler.forEach(([v, t]) => { const o = document.createElement("option"); o.value = v; o.textContent = t; s.appendChild(o); }); div.appendChild(s); return s; };
+    const il0 = new Date().getFullYear();
+    const g = mk(Array.from({ length: 31 }, (_, i) => [String(i + 1), String(i + 1).padStart(2, "0")]));
+    const a = mk(AYLAR.map((t, i) => [String(i + 1), t]));
+    const y = mk(Array.from({ length: 8 }, (_, i) => [String(il0 - 6 + i), String(il0 - 6 + i)]));
+    Object.defineProperty(div, "value", {
+      get() { const yy = +y.value, mm = +a.value, son = new Date(yy, mm, 0).getDate(), dd = Math.min(+g.value, son);
+        return `${yy}-${String(mm).padStart(2, "0")}-${String(dd).padStart(2, "0")}`; },
+      set(v) { const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/); if (m) { y.value = String(+m[1]); a.value = String(+m[2]); g.value = String(+m[3]); } },
+    });
+  }
+  hamisi("[data-f=dan],[data-f=ya]").forEach(tarixQur);
   // tarix
   const isoG = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   function araliq(bolme, tip) {

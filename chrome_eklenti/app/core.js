@@ -139,14 +139,33 @@ async function reyestr(voen) {
     return n;
   } catch (e) { LOG(`  ! Reyestr sorğusu alınmadı (${voen})`); return null; }
 }
+const _SOYAD = ["yeva", "yev", "ova", "eva", "ov", "ev", "zadə", "zade", "ski", "skaya"];
+const _SOYAD_UZUN = ["lı", "li", "lu", "lü"];  // yalnız uzun sözlərdə (Əli, Vəli kimi adlarla qarışmasın)
+const _ATA = ["oğlu", "qızı", "oglu", "qizi", "ogly", "kızı"];
+function _soyaddir(t) { const k = azLower(t); return _SOYAD.some((x) => k.endsWith(x)) || (k.length >= 6 && _SOYAD_UZUN.some((x) => k.endsWith(x))); }
+// Fərdi sahibkarın adı: Soyad Ad Ata adı sırası ilə
+function soyadAdAta(ad) {
+  const tok = ad.trim().replace(/^"|"$/g, "").split(/\s+/).filter(Boolean);
+  const i = tok.findIndex((t, k) => k >= 1 && _ATA.includes(azLower(t)));
+  if (i < 0) return azAdlandir(tok.join(" "));
+  const ata = tok.slice(i - 1, i + 1);
+  let qalan = [...tok.slice(0, i - 1), ...tok.slice(i + 1)];
+  if (qalan.length === 2 && !_soyaddir(qalan[0]) && _soyaddir(qalan[1])) qalan = [qalan[1], qalan[0]];
+  return azAdlandir([...qalan, ...ata].join(" "));
+}
 async function teref(voen, adQaime) {
+  if (String(voen).endsWith("2")) {
+    // VÖEN sonu 2 = fərdi sahibkar: reyestrə sorğu yoxdur
+    const sexs = soyadAdAta(adQaime || String(voen));
+    return { voen, ad: sexs, rol: "Fərdi Sahibkar", direktor: (AYAR.direktor_duzelis || {})[voen] || sexs };
+  }
   const r = await reyestr(voen);
   const ad = (r && r.ad) || adQaime || voen;
   const full = ad.startsWith('"') || ad.includes("Cəmiyyət") ? ad : `"${ad}"`;
   const kicik = azLower(ad.replace(/^"|"$/g, "").trim());
   const rol = /(oğlu|qızı)$/.test(kicik) ? "Fərdi Sahibkar" : "Direktor";
   let direktor = (AYAR.direktor_duzelis || {})[voen] || (r && r.direktor) || "";
-  if (!direktor && rol === "Fərdi Sahibkar") direktor = azAdlandir(ad.replace(/^"|"$/g, ""));
+  if (!direktor && rol === "Fərdi Sahibkar") direktor = soyadAdAta(ad);
   return { voen, ad: full, rol, direktor };
 }
 function esasCumle(q) {

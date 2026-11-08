@@ -11,7 +11,8 @@ nav button.aktiv{background:#fff;color:#1f4e8c}
 .bolme{background:#fff;border:1px solid #c5d0e0;border-radius:0 0 10px 10px;padding:4px 8px 8px}
 .bolme label{display:block;font-size:11px;color:#4a5d73;margin-top:5px}
 .bolme input[type=text],.bolme input[type=date],.bolme select{display:block;width:100%;margin-top:1px;padding:3px 6px;border:1px solid #b7c4d6;border-radius:5px;font:inherit;background:#fff}
-.ikili{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:6px}
+.ikili{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px}
+.tarix{display:flex;gap:3px;margin-top:1px}.bolme .tarix select{width:auto;flex:1;min-width:0;padding:3px 2px}
 .lnkler{margin-top:2px}
 .bolme label.cek{display:flex;align-items:center;gap:5px;font-size:12px;color:#1c2b3a;margin-top:5px}.cekler{display:flex;gap:12px;flex-wrap:wrap}
 button{font:inherit;cursor:pointer;border-radius:5px;border:1px solid #b7c4d6;background:#f3f6fb;padding:3px 9px}

@@ -31,7 +31,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph, Table, TableStyle
 
-VERSION = "1.5.3"
+VERSION = "1.5.4"
 ETAX = "https://new.e-taxes.gov.az"
 REYESTR_URL = ETAX + "/api/po/authless/public/v1/authless/findTaxpayer"
 KESH_FAYLI = "direktorlar.json"
@@ -632,7 +632,34 @@ def tarixce_xulase(ek):
 
 
 # --------------------------------------------------------------------------- tərəflər və mətn
+_SOYAD_SONLUQ = ("yeva", "yev", "ova", "eva", "ov", "ev", "zadə", "zade", "ski", "skaya")
+_SOYAD_SONLUQ_UZUN = ("lı", "li", "lu", "lü")  # yalnız uzun sözlərdə (Əli, Vəli kimi adlarla qarışmasın)
+_ATA = ("oğlu", "qızı", "oglu", "qizi", "ogly", "kızı")
+
+
+def _soyaddir(t):
+    k = az_lower(t)
+    return k.endswith(_SOYAD_SONLUQ) or (len(k) >= 6 and k.endswith(_SOYAD_SONLUQ_UZUN))
+
+
+def soyad_ad_ata(ad):
+    """Fərdi sahibkarın adı: Soyad Ad Ata adı sırası ilə (məs. 'Nadir Rafiq oğlu Mirzəyev' -> 'Mirzəyev Nadir Rafiq oğlu')."""
+    tok = ad.strip().strip('"').split()
+    i = next((k for k, t in enumerate(tok) if k >= 1 and az_lower(t) in _ATA), None)
+    if i is None:
+        return az_adlandir(" ".join(tok))
+    ata = tok[i - 1:i + 1]
+    qalan = tok[:i - 1] + tok[i + 1:]
+    if len(qalan) == 2 and not _soyaddir(qalan[0]) and _soyaddir(qalan[1]):
+        qalan = [qalan[1], qalan[0]]
+    return az_adlandir(" ".join(qalan + ata))
+
+
 def teref(voen, ad_qaime, oflayn):
+    if str(voen).endswith("2"):
+        # VÖEN sonu 2 = fərdi sahibkar: reyestrə sorğu yoxdur, ad qaimədəki ad əsasında Soyad Ad Ata adı sırası ilə
+        sexs = soyad_ad_ata(ad_qaime or str(voen))
+        return {"voen": voen, "ad": sexs, "rol": "Fərdi Sahibkar", "direktor": AYAR.get("direktor_duzelis", {}).get(voen) or sexs}
     r = reyestr(voen, oflayn)
     ad = (r or {}).get("ad") or ad_qaime or voen
     full = ad if ad.startswith('"') or "Cəmiyyət" in ad else f'"{ad}"'
@@ -640,7 +667,7 @@ def teref(voen, ad_qaime, oflayn):
     rol = "Fərdi Sahibkar" if re.search(r"(oğlu|qızı)$", kicik) else "Direktor"
     direktor = AYAR.get("direktor_duzelis", {}).get(voen) or (r or {}).get("direktor", "")
     if not direktor and rol == "Fərdi Sahibkar":
-        direktor = az_adlandir(ad.strip('"'))
+        direktor = soyad_ad_ata(ad.strip('"'))
     return {"voen": voen, "ad": full, "rol": rol, "direktor": direktor}
 
 
