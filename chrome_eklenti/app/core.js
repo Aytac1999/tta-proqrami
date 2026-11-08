@@ -555,7 +555,7 @@ async function edvEvezlesmesi({ dan, ya }, progress) {
           gonderen_voen: r.tin || "", gonderen_ad: adlar[r.tin] || "", qebul_voen: oz ? oz.voen : "", qebul_ad: oz ? oz.ad : "", esas: "", esas2: "", elaqeli_siyahi: [],
           mallar: [{ sira: "", ad: "(qaimə e-taxes-də tapılmadı)", kod: "", olcu: "", miqdar: "", qiymet: "", mebleg: r2(num(r.amount) - num(r.vat)), edv: num(r.vat), yekun: num(r.amount), sebeb: "" }] };
       }
-      setirler.push({ ...q, _bey: ayAd, _beyNov: nv, _odenilmis: r.paidAmount, _evez: r.paidVat });
+      setirler.push({ ...q, _bey: ayAd, _beyNov: b.reg ? `${nv}, ${_tarixIso(b.reg)}` : nv, _odenilmis: r.paidAmount, _evez: r.paidVat });
     }
     for (const c of b.ccd || []) ygb.push({ bey: ayAd, nov: nv, no: c.documentNumber, tarix: _tarixIso(c.documentDate), deyer: c.cost, edv: c.vat });
   }

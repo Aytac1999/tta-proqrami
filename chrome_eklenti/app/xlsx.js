@@ -169,14 +169,14 @@ function edvSehifeleri(setirler, ygb, bey) {
   const bs = (a) => a.map((v) => ({ v, s: S.TBASLIQ }));
   const top = (q, f) => Math.round(q.mallar.reduce((t, m) => t + (Number(m[f]) || 0), 0) * 100) / 100;
   const bas = ["Qaimə (seriya+nömrə)", "Qaimə tarixi", "İstiqamət", "Göndərən VÖEN", "Göndərən adı",
-    "Məbləğ (ƏDV-siz)", "ƏDV", "Yekun məbləğ", "Bəyannamə ayı", "Ödənilmiş məbləğ", "Əvəzləşdirilən ƏDV"];
+    "Məbləğ (ƏDV-siz)", "ƏDV", "Yekun məbləğ", "Bəyannamə ayı", "Bəyannamənin növü və tarixi", "Ödənilmiş məbləğ", "Əvəzləşdirilən ƏDV"];
   const rows = [bs(bas)];
   for (const q of setirler) {  // hər bəyannamə sətri üçün bir sətir (mal sətirləri yoxdur)
     rows.push([q.seriya + q.nomre, q.tarix, q.istiqamet || "", q.gonderen_voen || "", q.gonderen_ad || "",
       { v: q.cemi != null ? q.cemi : top(q, "mebleg"), s: S.TPUL }, { v: q.edv != null ? q.edv : top(q, "edv"), s: S.TPUL }, { v: q.yekun != null ? q.yekun : top(q, "yekun"), s: S.TPUL },
-      q._bey, { v: q._odenilmis, s: S.TPUL }, { v: q._evez, s: S.TPUL }]);
+      q._bey, q._beyNov, { v: q._odenilmis, s: S.TPUL }, { v: q._evez, s: S.TPUL }]);
   }
-  const sh = { ad: "ƏDV əvəzləşməsi", rows, eni: [20, 12, 12, 14, 34, 14, 12, 14, 18, 16, 16], dondur: true, suzgec: bas.length };
+  const sh = { ad: "ƏDV əvəzləşməsi", rows, eni: [20, 12, 12, 14, 34, 14, 12, 14, 18, 28, 16, 16], dondur: true, suzgec: bas.length };
   const yg = [bs(["Bəyannamə ayı", "Bəyannamənin növü", "YGB №", "YGB tarixi", "ƏDV-siz dəyər", "ƏDV məbləği"])];
   for (const y of ygb) yg.push([y.bey, y.nov, y.no, y.tarix, { v: y.deyer, s: S.TPUL }, { v: y.edv, s: S.TPUL }]);
   const bl = [bs(["Dövr", "Bəyannamənin növü", "Sənəd nömrəsi", "Statusu", "Qeydiyyat tarixi", "Əvəzləşdirmə qaimələrinin sayı", "Ödənilmiş ƏDV cəmi", "İdxal ƏDV cəmi"])];
