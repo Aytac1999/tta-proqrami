@@ -31,7 +31,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph, Table, TableStyle
 
-VERSION = "1.5.17"
+VERSION = "1.5.18"
 ETAX = "https://new.e-taxes.gov.az"
 REYESTR_URL = ETAX + "/api/po/authless/public/v1/authless/findTaxpayer"
 KESH_FAYLI = "direktorlar.json"
@@ -930,7 +930,7 @@ def terkib_xlsx(yol, qaimeler):
            "Göndərildi", "Təsdiqləndi (son)", "Düzəliş edilib?", "Düzəliş tarixi", "Düzəliş edən",
            "Əlaqəli qaimələr (geri qaytarma / əsas qaimə)", "Göndərən VÖEN", "Göndərən adı", "Qəbul edən VÖEN",
            "Qəbul edən adı", "Əsas", "Əlavə qeydlər", "Sıra №", "Malın adı", "Malın kodu", "Ölçü vahidi", "Miqdar",
-           "Vahidin qiyməti", "Məbləğ (ƏDV-siz)", "ƏDV", "Yekun məbləğ", "Qaytarma səbəbi", "Ləğv tarixi", "Avans qaiməsi", "Malların, işlərin və xidmətlərin təqdim edilməsi barədə elektron qaimə-faktura"]
+           "Vahidin qiyməti", "Məbləğ (ƏDV-siz)", "ƏDV", "Yekun məbləğ", "Qaytarma səbəbi", "Ləğv tarixi", "Avans qaiməsi", "Təqdimedilmə qaiməsi"]
     sehife(ws, bas, [20, 12, 12, 14, 16, 11, 9, 17, 17, 14, 17, 28, 50, 14, 34, 14, 34, 40, 24, 7, 50, 14, 10, 10, 12, 14, 12, 14, 18, 26, 30, 30])
     for q in qaimeler:
         for m in q["mallar"]:
