@@ -171,6 +171,8 @@ function edvSehifeleri(setirler, ygb, bey) {
   sh.ad = "ƏDV əvəzləşməsi";
   sh.rows.forEach((r) => r.splice(28, 4));  // Qaytarma səbəbi, Ləğv tarixi, Avans qaiməsi, Təqdimedilmə qaiməsi bu cədvəldə lazım deyil
   sh.eni.splice(28, 4);
+  sh.rows.forEach((r) => r.splice(3, 10));  // Status ... Əlaqəli qaimələr (3-12-ci sütunlar) da çıxarılır
+  sh.eni.splice(3, 10);
   sh.rows[0].push(...bs(["Bəyannamə ayı", "Bəyannamənin növü", "Ödənilmiş məbləğ", "Əvəzləşdirilən ƏDV"]));
   let ri = 1;
   for (const q of setirler) q.mallar.forEach((m, i) => {
