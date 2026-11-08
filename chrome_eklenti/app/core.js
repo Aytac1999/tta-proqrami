@@ -3,7 +3,7 @@ const ETAX = "https://new.e-taxes.gov.az";
 const REYESTR_URL = ETAX + "/api/po/authless/public/v1/authless/findTaxpayer";
 const AYAR_DEF = {
   sheher: "Bakı şəhəri",
-  giris_sablon: "Biz, aşağıda imza edənlər, Satıcı {satici} (VÖEN {satici_voen}) və Alıcı {alici} (VÖEN {alici_voen}), bu aktı tərtib edirik ki, {esas}aşağıda göstərilən mallar Satıcı tərəfindən təhvil verilmiş, Alıcı tərəfindən qəbul edilmişdir.",
+  giris_sablon: "Biz, aşağıda imza edənlər, Satıcı {satici} (VÖEN {satici_voen}) və Alıcı {alici} (VÖEN {alici_voen}), bu aktı tərtib etdik ona görə ki, {esas}aşağıda göstərilən mallar Satıcı tərəfindən təhvil verilmiş, Alıcı tərəfindən qəbul edilmişdir.",
   iddia_cumlesi: "Tərəflərin həcm, keyfiyyət və müddətə dair bir-birinə qarşı iddiası yoxdur.",
   protokol_yarat: true,
   protokol_basliq: "QİYMƏT RAZILAŞDIRMA PROTOKOLU",

@@ -31,7 +31,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph, Table, TableStyle
 
-VERSION = "1.5.19"
+VERSION = "1.5.20"
 ETAX = "https://new.e-taxes.gov.az"
 REYESTR_URL = ETAX + "/api/po/authless/public/v1/authless/findTaxpayer"
 KESH_FAYLI = "direktorlar.json"
@@ -78,7 +78,7 @@ VARSAYILAN = {
     "yenileme_url": "",  # məs. https://raw.githubusercontent.com/SIZIN_AD/tta/main  (version.txt, tta_proqrami.py, ayarlar.json)
     "sheher": "Bakı şəhəri",
     "giris_sablon": ("Biz, aşağıda imza edənlər, Satıcı {satici} (VÖEN {satici_voen}) və Alıcı {alici} (VÖEN {alici_voen}), "
-                     "bu aktı tərtib edirik ki, {esas}aşağıda göstərilən mallar Satıcı tərəfindən təhvil verilmiş, "
+                     "bu aktı tərtib etdik ona görə ki, {esas}aşağıda göstərilən mallar Satıcı tərəfindən təhvil verilmiş, "
                      "Alıcı tərəfindən qəbul edilmişdir."),
     "protokol_yarat": True,  # TTA ilə birlikdə "Qiymət razılaşdırma protokolu" da hazırlansın
     "protokol_basliq": "QİYMƏT RAZILAŞDIRMA PROTOKOLU",
