@@ -30,10 +30,11 @@ async function tokenAl() {
   const tabs = await chrome.tabs.query({ url: ETAX + "/*" });
   for (const t of tabs) {
     try {
-      const [r] = await chrome.scripting.executeScript({
+      // bağlı/donmuş tab səbəbindən ilişməsin: hər tab üçün 4 san. limit
+      const [r] = await Promise.race([chrome.scripting.executeScript({
         target: { tabId: t.id },
         func: () => localStorage.getItem("aztax-jwt") || sessionStorage.getItem("aztax-jwt"),
-      });
+      }), new Promise((_, no) => setTimeout(() => no(new Error("vaxt bitdi")), 4000))]);
       let raw = (r && r.result || "").trim();
       if (!raw) continue;
       try {
@@ -112,8 +113,11 @@ async function isle(m) {
       basliq["x-authorization"] = m.bearer ? "Bearer " + tok : tok;
     }
     try {
-      const r = await fetch(m.url, { method: m.metod || "GET", headers: basliq, body: m.json !== undefined ? JSON.stringify(m.json) : undefined });
-      return { status: r.status, text: await r.text() };
+      const ac = new AbortController(), tm = setTimeout(() => ac.abort(), 60000);  // 60 san.-dən çox gözləmə
+      try {
+        const r = await fetch(m.url, { method: m.metod || "GET", headers: basliq, body: m.json !== undefined ? JSON.stringify(m.json) : undefined, signal: ac.signal });
+        return { status: r.status, text: await r.text() };
+      } finally { clearTimeout(tm); }
     } catch (err) { return { sebeke: String(err.message || err) }; }
   }
   if (m.t === "get") return await st(m.key);
