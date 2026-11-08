@@ -76,12 +76,12 @@ async function yukle(yalnizDaxili) {
   if (!yalnizDaxili) {
     const menbe = ((await st("menbe")) || MENBE_DEF).replace(/\/$/, "");
     paket = await st("app_kesh");
-    if (paket) {
-      // yaddaşdakı nüsxə dərhal açılır (sürətli); yeni versiya fonda yüklənir və növbəti açılışda işləyir
-      yenile(menbe, paket).catch(() => {});
-    } else {
-      try { paket = await yenile(menbe, null); } catch (e) { /* internet yoxdur / GitHub əlçatmazdır: daxili nüsxə işlənəcək */ }
-    }
+    // yeni versiya varsa dərhal yüklənir: əvvəl yalnız kiçik versiya faylı yoxlanır (adətən saniyənin bir hissəsi, 2 san. limit).
+    // Eyni versiyadırsa yaddaşdakı nüsxə dərhal açılır; internet yoxdursa da yaddaşdakı nüsxə işləyir.
+    try {
+      const uz = JSON.parse(await getir(menbe + "/chrome_eklenti/app/versiya.json", 2000));
+      if (!paket || paket.versiya !== uz.versiya) paket = await yenile(menbe, null);
+    } catch (e) { /* yoxlama alınmadı: yaddaşdakı və ya daxili nüsxə işlənəcək */ }
     if (paket) paket.menbe = menbe;
   }
   if (!paket) paket = await qablasdirilmis();
