@@ -14,7 +14,7 @@ B) CHROME ƏLAVƏSİ (e-taxes-ə yenidən daxil olmadan)
 3) "Load unpacked" (Paketsiz yüklə) düyməsinə basın və bu qovluqdakı "chrome_eklenti" qovluğunu seçin.
    DİQQƏT: "chrome_eklenti" qovluğunu sonra silməyin və yerini dəyişməyin.
 4) Brauzerin yuxarı sağındakı yapboz (Extensions) işarəsindən "TTA Köməkçisi"ni sancın.
-5) e-taxes-ə həmişəki kimi daxil olun (səhifə açıq qalsın). Əlavənin ikonuna basın - panel açılır.
+5) e-taxes-ə həmişəki kimi daxil olun (səhifə açıq qalsın). Əlavənin ikonuna basın - panel e-taxes səhifəsinin YANINDA (yan paneldə) açılır, ayrıca tab açılmır. Panelin eni sürüşdürülərək dəyişdirilə bilər.
    İki bölmə: 1) Qaimə tərkibi (Excel)  2) TTA + Qiymət razılaşdırma protokolu (ZIP-də Excel; PDF üçün "çap et" düyməsi -> "PDF kimi saxla").
 
 YENİLƏMƏ (admin)
