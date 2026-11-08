@@ -58,21 +58,29 @@ async function qablasdirilmis() {
   for (const f of v.fayllar) fayllar[f] = await getir(ad + f);
   return { versiya: v.versiya + " (daxili)", siyahi: v.fayllar, fayllar };
 }
+// GitHub-dakı proqramın yeni versiyasını (varsa) paralel yükləyib yaddaşa yazır
+async function yenile(menbe, kesh) {
+  const uz = JSON.parse(await getir(menbe + "/chrome_eklenti/app/versiya.json", 6000));
+  if (kesh && kesh.versiya === uz.versiya) return kesh;
+  const hamisi = await Promise.all(uz.fayllar.map((f) => getir(menbe + "/chrome_eklenti/app/" + f, 15000)));
+  const fayllar = {};
+  uz.fayllar.forEach((f, i) => (fayllar[f] = hamisi[i]));
+  const paket = { versiya: uz.versiya, siyahi: uz.fayllar, fayllar };
+  await chrome.storage.local.set({ app_kesh: paket });
+  return paket;
+}
 async function yukle(yalnizDaxili) {
   hazir = false;
   let paket = null;
   if (!yalnizDaxili) {
     const menbe = ((await st("menbe")) || MENBE_DEF).replace(/\/$/, "");
     paket = await st("app_kesh");
-    try {
-      const uz = JSON.parse(await getir(menbe + "/chrome_eklenti/app/versiya.json", 6000));
-      if (!paket || paket.versiya !== uz.versiya) {
-        const fayllar = {};
-        for (const f of uz.fayllar) fayllar[f] = await getir(menbe + "/chrome_eklenti/app/" + f, 15000);
-        paket = { versiya: uz.versiya, siyahi: uz.fayllar, fayllar };
-        await chrome.storage.local.set({ app_kesh: paket });
-      }
-    } catch (e) { /* internet yoxdur / GitHub əlçatmazdır: keşdəki və ya daxili nüsxə işlənəcək */ }
+    if (paket) {
+      // yaddaşdakı nüsxə dərhal açılır (sürətli); yeni versiya fonda yüklənir və növbəti açılışda işləyir
+      yenile(menbe, paket).catch(() => {});
+    } else {
+      try { paket = await yenile(menbe, null); } catch (e) { /* internet yoxdur / GitHub əlçatmazdır: daxili nüsxə işlənəcək */ }
+    }
     if (paket) paket.menbe = menbe;
   }
   if (!paket) paket = await qablasdirilmis();

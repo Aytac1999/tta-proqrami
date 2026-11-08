@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "TTA Köməkçisi - e-taxes",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "description": "e-taxes qaimələrindən qaimə tərkibi (Excel), təhvil-təslim aktı və qiymət razılaşdırma protokolu hazırlayır. Səhifənin üstündə üzən pəncərədə açılır, yenidən daxil olmaq tələb olunmur.",
   "action": {
     "default_title": "TTA Köməkçisi",
