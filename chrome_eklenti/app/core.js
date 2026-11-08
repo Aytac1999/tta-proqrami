@@ -518,21 +518,23 @@ async function edvEvezlesmesi({ dan, ya }, progress) {
     b.ccd = await beyCedvel(cl, "VAT_APPENDIX_1_REPORT_PERIOD_CCD", b.no);
     LOG(`  ${AYLAR_AZ[b.ay - 1]} ${b.il} (${BEY_NOV_AZ[b.nov] || b.nov}): ${b.inv.length} qaimə, ${b.ccd.length} YGB`);
   }
-  const unik = [...new Set(bey.flatMap((b) => (b.inv || []).map((r) => r.documentSerial + r.documentNumber)))];
+  // e-taxes nömrə ilə axtarışı qəbul etmir (400): qaimələr tarixə görə götürülür, nömrə ilə uyğunlaşdırılır
+  const tarixler = [...new Set(bey.flatMap((b) => (b.inv || []).map((r) => String(r.documentDate || "").slice(0, 10)).filter(Boolean)))].sort();
+  const lazim = new Set(bey.flatMap((b) => (b.inv || []).map((r) => r.documentSerial + r.documentNumber)));
   const ceh = new Map(), sabah = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
   let nov = 0, hazir = 0;
   const isci = async () => {
     while (!DAYANDI()) {
-      const i = nov++; if (i >= unik.length) return;
-      const sn = unik[i];
+      const i = nov++; if (i >= tarixler.length) return;
+      const g = tarixler[i];
       try {
-        const x = (await cl.siyahi("inbox", "2000-01-01", sabah, sn)).find((z) => z.serialNumber === sn);
-        ceh.set(sn, x ? qaimeCevir(await cl.detay(x), "Gələn", null) : null);
-      } catch (e) { if (e instanceof SessiyaXetasi) throw e; LOG(`! ${sn}: götürülmədi (${String(e.message).slice(0, 80)})`); ceh.set(sn, null); }
-      progress && progress(++hazir, unik.length);
+        const sira = (await cl.siyahi("inbox", g, g)).filter((z) => lazim.has(z.serialNumber) && !ceh.has(z.serialNumber));
+        for (const x of sira) { if (DAYANDI()) break; ceh.set(x.serialNumber, qaimeCevir(await cl.detay(x), "Gələn", null)); }
+      } catch (e) { if (e instanceof SessiyaXetasi) throw e; LOG(`! ${g}: qaimələr götürülmədi (${String(e.message).slice(0, 80)})`); }
+      progress && progress(++hazir, tarixler.length);
     }
   };
-  await Promise.all(Array.from({ length: Math.min(6, unik.length) }, isci));
+  await Promise.all(Array.from({ length: Math.min(6, tarixler.length) }, isci));
   const setirler = [], ygb = [], tapilmayan = [];
   for (const b of bey) {
     const ayAd = `${AYLAR_AZ[b.ay - 1]} ${b.il}`, nv = BEY_NOV_AZ[b.nov] || b.nov;
