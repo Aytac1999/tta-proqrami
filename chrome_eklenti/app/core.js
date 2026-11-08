@@ -290,13 +290,18 @@ async function tarixceAl(cl, q) {
 }
 
 // ------------------------------------------------------------------ qaimənin çevrilməsi
+const KIND_AZ = {
+  advanceInvoice: "Avans qaiməsi",
+  defaultInvoice: "Malların, işlərin və xidmətlərin təqdim edilməsi barədə elektron qaimə-faktura",
+  returnInvoice: "Malların qaytarılması barədə elektron qaimə-faktura",
+};
 function qaimeTipi(sn, d) {
   const t = (AYAR.tip_adlari || {})[sn.slice(0, 2)] || TIP_AZ[sn.slice(0, 2)];
   if (t) return t;
   for (const k of ["invoiceTypeName", "invoiceType", "documentType", "kind", "typeName"]) {
     let v = (d || {})[k];
     if (v && typeof v === "object") v = v.name && typeof v.name === "object" ? v.name.az : v.name;
-    if (v) return String(v);
+    if (v) return KIND_AZ[String(v)] || String(v);
   }
   return sn.slice(0, 2);
 }

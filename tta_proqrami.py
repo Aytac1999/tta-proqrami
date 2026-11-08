@@ -31,7 +31,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph, Table, TableStyle
 
-VERSION = "1.5.14"
+VERSION = "1.5.15"
 ETAX = "https://new.e-taxes.gov.az"
 REYESTR_URL = ETAX + "/api/po/authless/public/v1/authless/findTaxpayer"
 KESH_FAYLI = "direktorlar.json"
@@ -529,6 +529,13 @@ TIP_AZ = {"MT": "Malların, işlərin və xidmətlərin təqdim edilməsi barəd
           "MQ": "Malların qaytarılması barədə elektron qaimə-faktura"}
 
 
+KIND_AZ = {
+    "advanceInvoice": "Avans qaiməsi",
+    "defaultInvoice": "Malların, işlərin və xidmətlərin təqdim edilməsi barədə elektron qaimə-faktura",
+    "returnInvoice": "Malların qaytarılması barədə elektron qaimə-faktura",
+}
+
+
 def qaime_tipi(sn, d=None):
     t = (AYAR.get("tip_adlari") or {}).get(sn[:2]) or TIP_AZ.get(sn[:2])
     if t:
@@ -538,7 +545,7 @@ def qaime_tipi(sn, d=None):
         if isinstance(v, dict):
             v = (v.get("name") or {}).get("az") if isinstance(v.get("name"), dict) else v.get("name")
         if v:
-            return str(v)
+            return KIND_AZ.get(str(v), str(v))
     return sn[:2]
 
 
