@@ -31,7 +31,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph, Table, TableStyle
 
-VERSION = "1.5.21"
+VERSION = "1.5.22"
 ETAX = "https://new.e-taxes.gov.az"
 REYESTR_URL = ETAX + "/api/po/authless/public/v1/authless/findTaxpayer"
 KESH_FAYLI = "direktorlar.json"
@@ -88,7 +88,7 @@ VARSAYILAN = {
                            "aşağıda göstərilən mallar üzrə hesab-faktura təqdim edilir. Ödənişin aşağıda göstərilən "
                            "bank rekvizitlərinə köçürülməsi xahiş olunur."),
     "rekvizitler": {},  # hesab-faktura üçün satıcının bank rekvizitləri: {"VÖEN" və ya "*": {"ad","kod","bvoen","mh","swift","hesab"}}  # boşdursa TTA mətni götürülür ("aktı" sözü "protokolu" ilə əvəz olunur)
-    "iddia_cumlesi": "Tərəflərin həcm, keyfiyyət və müddətə dair bir-birinə qarşı iddiası yoxdur.",
+    "iddia_cumlesi": "",
     "direktor_duzelis": {},                                    # {"VÖEN": "Ad Soyad Ata adı oğlu"}
     "esas_evezlemeleri": [["müqaviləsi\\s*$", "müqaviləsinə"]],  # [regex, əvəz]
 }
@@ -109,6 +109,8 @@ def ayar_yukle(merkezi=None):
             for k in ("giris_sablon", "protokol_giris_sablon"):
                 if isinstance(yerli.get(k), str) and "bu aktı tərtib edirik ki," in yerli[k]:
                     yerli[k] = yerli[k].replace("bu aktı tərtib edirik ki,", "bu aktı tərtib etdik ona görə ki,")
+            if yerli.get("iddia_cumlesi") == "Tərəflərin həcm, keyfiyyət və müddətə dair bir-birinə qarşı iddiası yoxdur.":  # köhnə standart cümlə: artıq sənədlərdə yoxdur
+                yerli["iddia_cumlesi"] = ""
             a.update(yerli)
         except (OSError, ValueError) as e:
             print(f"! {AYAR_FAYLI} oxunmadı ({e}), standart ayarlar işlədilir")
@@ -848,7 +850,8 @@ def tta_pdf(yol, q, sat, alc, protokol=False):
             c.setFont("FB", 8); c.drawString(L + c.stringWidth(f"{ad}: ", "F", 8), y, rk.get(k) or "______________________")
         y -= 40
     else:
-        y -= 13; c.drawString(L, y, AYAR["iddia_cumlesi"])
+        if AYAR.get("iddia_cumlesi"):
+            y -= 13; c.drawString(L, y, AYAR["iddia_cumlesi"])
         y -= 52
     mid = W / 2 + 20
 

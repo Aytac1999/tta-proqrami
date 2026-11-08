@@ -150,7 +150,7 @@ function aktSehifesi(q, sat, alc, tip, rekv) {
     rows.push([], [{ v: "SATICININ BANK REKVİZİTLƏRİ", s: S.QALIN }]);
     for (const [k, ad] of REKV_SETRI) rows.push([{ v: `${ad}: ${(rekv && rekv[k]) || "______________________"}`, s: S.NORMAL }]);
     rows.push([], [], []);
-  } else rows.push([{ v: AYAR.iddia_cumlesi, s: S.NORMAL }], [], [], []);
+  } else rows.push([{ v: AYAR.iddia_cumlesi || "", s: S.NORMAL }], [], [], []);
   const b = rows.length + 1;
   const blok = (tr, bas) => [bas, tr.ad, `VÖEN: ${tr.voen}`, "", `${tr.rol}: ${tr.direktor}`, "", "", "", "İmza: ______________________", "M.Y."];
   const sb = blok(sat, "SATICI"), ab = blok(alc, "ALICI");

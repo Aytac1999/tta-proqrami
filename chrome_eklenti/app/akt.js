@@ -13,7 +13,7 @@ function aktHtml(q, sat, alc, tip, rekv) {
 <h2>${_h(basliq)} № ${_h(no)}</h2><p class="giris">${_h(girisMetni(q, sat, alc, tip))}</p>
 <table class="mal"><thead><tr><th>№</th><th>Malın / işin / xidmətin adı</th><th>Kod</th><th>Ölçü vahidi</th><th>Miqdar</th><th>Vahidin qiyməti</th><th>Məbləğ</th></tr></thead><tbody>${sat_}</tbody></table>
 <table class="yek"><tr><td><b>Cəmi</b></td><td><b>${fmt(q.cemi)}</b></td></tr><tr><td><b>${edvEtiketi(q)}</b></td><td><b>${fmt(q.edv)}</b></td></tr><tr><td><b>Yekun</b></td><td><b>${fmt(q.yekun)}</b></td></tr></table>
-<p class="yaz"><b>Yekun məbləğ (yazı ilə):</b> ${_h(meblegYazi(q.yekun))}${tip === "hesab" ? "" : "<br>" + _h(AYAR.iddia_cumlesi)}</p>${tip === "hesab" ? rekvHtml(rekv) : ""}
+<p class="yaz"><b>Yekun məbləğ (yazı ilə):</b> ${_h(meblegYazi(q.yekun))}${tip === "hesab" || !AYAR.iddia_cumlesi ? "" : "<br>" + _h(AYAR.iddia_cumlesi)}</p>${tip === "hesab" ? rekvHtml(rekv) : ""}
 <div class="imza">${blok("SATICI", sat)}${blok("ALICI", alc)}</div></section>`;
 }
 
