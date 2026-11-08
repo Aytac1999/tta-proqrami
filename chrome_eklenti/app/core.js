@@ -468,12 +468,13 @@ const BEY_STATUS_AZ = { CONFIRMED: "Təsdiqlənmiş", ON_CHECK: "Uyğunsuzluq yo
 const BEY_API = "/api/po/declaration/public/v1";
 
 // dan/ya: "YYYY-MM". Hər ay üçün SONUNCU (qeydiyyat tarixinə görə) ƏDV bəyannaməsi: cari, dəqiqləşdirilmiş və ya kameral
-async function edvBeyannameleri(cl, dan, ya) {
+async function edvBeyannameleri(cl, dan, ya, progress) {
   const [dI, dA] = dan.split("-").map(Number), [yI, yA] = ya.split("-").map(Number);
   const acar = (il, ay) => il * 12 + ay, d1 = acar(dI, dA), d2 = acar(yI, yA);
   const gor = new Map();
   for (let il = dI; il <= yI + 1; il++) {  // qeydiyyat ili hesabat ilindən sonra ola bilər
     let j;
+    progress && progress(null, null, `Bəyannamə siyahısı oxunur (${il})`);
     try { j = await cl.json("GET", `${BEY_API}/declaration/list?year=${il}`); }
     catch (e) { if (e instanceof SessiyaXetasi) throw e; LOG(`! ${il}: bəyannamə siyahısı alınmadı (${e.message})`); continue; }
     for (const x of j.declarations || []) {
@@ -513,7 +514,8 @@ async function beyCedvel(cl, kod, no) {
 const _tarixIso = (s) => String(s || "").slice(0, 10).split("-").reverse().join(".");
 async function edvEvezlesmesi({ dan, ya }, progress) {
   const cl = new ETaxes();
-  const bey = await edvBeyannameleri(cl, dan, ya);
+  progress && progress(null, null, "e-taxes-ə qoşulur");
+  const bey = await edvBeyannameleri(cl, dan, ya, progress);
   progress && progress(0, bey.length, "Bəyannamələr oxunur");
   let oxunan = 0, bn = 0;
   await Promise.all(Array.from({ length: Math.min(4, bey.length) }, async () => {
@@ -541,6 +543,7 @@ async function edvEvezlesmesi({ dan, ya }, progress) {
     }
   };
   await Promise.all(Array.from({ length: Math.min(6, tarixler.length) }, isci));
+  progress && progress(null, null, "Qaimələr hazırlanır");
   const tapUnik = [...new Map(tap.map((z) => [z.serialNumber, z])).values()];
   nov = 0; hazir = 0;
   const isci2 = async () => {
