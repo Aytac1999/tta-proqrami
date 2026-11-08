@@ -535,6 +535,14 @@ async function edvEvezlesmesi({ dan, ya }, progress) {
     }
   };
   await Promise.all(Array.from({ length: Math.min(6, tarixler.length) }, isci));
+  // VÖEN -> ad: əvvəl tapılmış qaimələrdən, tapılmayanlar üçün reyestrdən (fərdi sahibkar VÖEN-i 2 ilə bitir: reyestr yoxdur)
+  const adlar = {}; let oz = null;
+  for (const q of ceh.values()) if (q) { if (q.gonderen_voen && q.gonderen_ad) adlar[q.gonderen_voen] = q.gonderen_ad; if (!oz && q.qebul_voen) oz = { voen: q.qebul_voen, ad: q.qebul_ad }; }
+  const bilinmeyen = [...new Set(bey.flatMap((b) => (b.inv || []).filter((r) => !ceh.get(r.documentSerial + r.documentNumber)).map((r) => r.tin)).filter((t) => t && !adlar[t] && !/2$/.test(t)))];
+  let rn = 0;
+  await Promise.all(Array.from({ length: Math.min(4, bilinmeyen.length) }, async () => {
+    while (!DAYANDI()) { const i = rn++; if (i >= bilinmeyen.length) return; const r = await reyestr(bilinmeyen[i]).catch(() => null); if (r && r.ad) adlar[bilinmeyen[i]] = r.ad; }
+  }));
   const setirler = [], ygb = [], tapilmayan = [];
   for (const b of bey) {
     const ayAd = `${AYLAR_AZ[b.ay - 1]} ${b.il}`, nv = BEY_NOV_AZ[b.nov] || b.nov;
@@ -544,7 +552,7 @@ async function edvEvezlesmesi({ dan, ya }, progress) {
       if (!q) {
         tapilmayan.push(sn);
         q = { seriya: r.documentSerial, nomre: r.documentNumber, tarix: _tarixIso(r.documentDate), istiqamet: "Gələn", status: "", tip: "", novu: "",
-          gonderen_voen: r.tin || "", gonderen_ad: "", qebul_voen: "", qebul_ad: "", esas: "", esas2: "", elaqeli_siyahi: [],
+          gonderen_voen: r.tin || "", gonderen_ad: adlar[r.tin] || "", qebul_voen: oz ? oz.voen : "", qebul_ad: oz ? oz.ad : "", esas: "", esas2: "", elaqeli_siyahi: [],
           mallar: [{ sira: "", ad: "(qaimə e-taxes-də tapılmadı)", kod: "", olcu: "", miqdar: "", qiymet: "", mebleg: r2(num(r.amount) - num(r.vat)), edv: num(r.vat), yekun: num(r.amount), sebeb: "" }] };
       }
       setirler.push({ ...q, _bey: ayAd, _beyNov: nv, _odenilmis: r.paidAmount, _evez: r.paidVat });
