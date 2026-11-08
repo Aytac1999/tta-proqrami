@@ -223,7 +223,7 @@ class ETaxes {
         if (r.sessiya) throw new SessiyaXetasi("e-taxes-ə daxil olunmayıb");
         if (!r.sebeke) break;
         if (i === gozleyis.length) throw new Error("bağlantı kəsildi");
-        LOG(`  ... bağlantı kəsildi, ${gozleyis[i]} san. gözləyib yenidən cəhd edirəm (${i + 1}/${gozleyis.length})`);
+        LOG(`  ... bağlantı kəsildi (${String(r.sebeke).slice(0, 80)}), ${gozleyis[i]} san. gözləyib yenidən cəhd edirəm (${i + 1}/${gozleyis.length})`);
         await gozle(gozleyis[i] * 1000);
       }
       if ((r.status === 401 || r.status === 403) && !this.bearer) { this.bearer = true; continue; }

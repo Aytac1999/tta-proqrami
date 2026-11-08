@@ -4,7 +4,7 @@
   const hamisi = (s, k) => [...(k || document).querySelectorAll(s)];
   const xeberler = [];
   let dayan = false, isleyir = false, son = { tta: [], protokol: [] };
-  LOG = (m) => { if (/^\s*!/.test(m)) xeberler.push(m.replace(/^\s*!\s*/, "")); };
+  LOG = (m) => { if (/^\s*!/.test(m)) xeberler.push(m.replace(/^\s*!\s*/, "")); else if (/bağlantı kəsildi/.test(m)) netice([["x", m.replace(/^\s*\.*\s*/, "")]]); };
   DAYANDI = () => dayan;
   const progress = (i, n) => { $("#dolu").style.width = Math.round((i / n) * 100) + "%"; };
   $("#ver").textContent = "v" + (window.APP_VERSIYA || "?");
