@@ -514,29 +514,45 @@ const _tarixIso = (s) => String(s || "").slice(0, 10).split("-").reverse().join(
 async function edvEvezlesmesi({ dan, ya }, progress) {
   const cl = new ETaxes();
   const bey = await edvBeyannameleri(cl, dan, ya);
-  for (let i = 0; i < bey.length && !DAYANDI(); i++) {
-    const b = bey[i];
-    b.inv = await beyCedvel(cl, "VAT_APPENDIX_1_REPORT_PERIOD_INVOICE", b.no);
-    b.ccd = await beyCedvel(cl, "VAT_APPENDIX_1_REPORT_PERIOD_CCD", b.no);
-    LOG(`  ${AYLAR_AZ[b.ay - 1]} ${b.il} (${BEY_NOV_AZ[b.nov] || b.nov}): ${b.inv.length} qaimə, ${b.ccd.length} YGB`);
-  }
+  progress && progress(0, bey.length, "Bəyannamələr oxunur");
+  let oxunan = 0, bn = 0;
+  await Promise.all(Array.from({ length: Math.min(4, bey.length) }, async () => {
+    while (!DAYANDI()) {
+      const i = bn++; if (i >= bey.length) return;
+      const b = bey[i];
+      [b.inv, b.ccd] = await Promise.all([beyCedvel(cl, "VAT_APPENDIX_1_REPORT_PERIOD_INVOICE", b.no), beyCedvel(cl, "VAT_APPENDIX_1_REPORT_PERIOD_CCD", b.no)]);
+      LOG(`  ${AYLAR_AZ[b.ay - 1]} ${b.il} (${BEY_NOV_AZ[b.nov] || b.nov}): ${b.inv.length} qaimə, ${b.ccd.length} YGB`);
+      progress && progress(++oxunan, bey.length, "Bəyannamələr oxunur");
+    }
+  }));
   // e-taxes nömrə ilə axtarışı qəbul etmir (400): qaimələr tarixə görə götürülür, nömrə ilə uyğunlaşdırılır
   const tarixler = [...new Set(bey.flatMap((b) => (b.inv || []).map((r) => String(r.documentDate || "").slice(0, 10)).filter(Boolean)))].sort();
   const lazim = new Set(bey.flatMap((b) => (b.inv || []).map((r) => r.documentSerial + r.documentNumber)));
-  const ceh = new Map(), sabah = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  const ceh = new Map();
+  const tap = [];  // detalı götürüləcək qaimələr
   let nov = 0, hazir = 0;
   const isci = async () => {
     while (!DAYANDI()) {
       const i = nov++; if (i >= tarixler.length) return;
       const g = tarixler[i];
-      try {
-        const sira = (await cl.siyahi("inbox", g, g)).filter((z) => lazim.has(z.serialNumber) && !ceh.has(z.serialNumber));
-        for (const x of sira) { if (DAYANDI()) break; ceh.set(x.serialNumber, qaimeCevir(await cl.detay(x), "Gələn", null)); }
-      } catch (e) { if (e instanceof SessiyaXetasi) throw e; LOG(`! ${g}: qaimələr götürülmədi (${String(e.message).slice(0, 80)})`); }
-      progress && progress(++hazir, tarixler.length);
+      try { tap.push(...(await cl.siyahi("inbox", g, g)).filter((z) => lazim.has(z.serialNumber))); }
+      catch (e) { if (e instanceof SessiyaXetasi) throw e; LOG(`! ${g}: qaimələr götürülmədi (${String(e.message).slice(0, 80)})`); }
+      progress && progress(++hazir, tarixler.length, "Qaimələr tarixlər üzrə axtarılır");
     }
   };
   await Promise.all(Array.from({ length: Math.min(6, tarixler.length) }, isci));
+  const tapUnik = [...new Map(tap.map((z) => [z.serialNumber, z])).values()];
+  nov = 0; hazir = 0;
+  const isci2 = async () => {
+    while (!DAYANDI()) {
+      const i = nov++; if (i >= tapUnik.length) return;
+      const x = tapUnik[i];
+      try { ceh.set(x.serialNumber, qaimeCevir(await cl.detay(x), "Gələn", null)); }
+      catch (e) { if (e instanceof SessiyaXetasi) throw e; LOG(`! ${x.serialNumber}: götürülmədi (${String(e.message).slice(0, 80)})`); }
+      progress && progress(++hazir, tapUnik.length, "Qaimələrin tərkibi götürülür");
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(8, tapUnik.length) }, isci2));
   // VÖEN -> ad: əvvəl tapılmış qaimələrdən, tapılmayanlar üçün reyestrdən (fərdi sahibkar VÖEN-i 2 ilə bitir: reyestr yoxdur)
   const adlar = {}; let oz = null;
   for (const q of ceh.values()) if (q) { if (q.gonderen_voen && q.gonderen_ad) adlar[q.gonderen_voen] = q.gonderen_ad; if (!oz && q.qebul_voen) oz = { voen: q.qebul_voen, ad: q.qebul_ad }; }

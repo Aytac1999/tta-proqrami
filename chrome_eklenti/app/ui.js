@@ -198,7 +198,7 @@
     const dan = $("#b-edv [data-f=edvdan]").value, ya = $("#b-edv [data-f=edvya]").value;
     if (!dan || !ya) return netice([["x", "Başlanğıc və son ayı seçin."]]);
     if (dan > ya) return netice([["x", "Başlanğıc ay son aydan böyük ola bilməz."]]);
-    const r = await edvEvezlesmesi({ dan, ya }, (i, n) => { progress(i, n); netice([["", `Qaimələr götürülür … ${i}/${n}`]]); });
+    const r = await edvEvezlesmesi({ dan, ya }, (i, n, faza) => { progress(i, n); netice([["", `${faza || "Qaimələr götürülür"} … ${i}/${n}`]]); });
     if (!r.bey.length) return netice([["", "Bu aylar üçün ƏDV bəyannaməsi tapılmadı."]]);
     const bytes = await xlsxYarat(edvSehifeleri(r.setirler, r.ygb, r.bey));
     const yer = await saxla([{ ad: `edv_evezlesmesi_${bugun()}.xlsx`, data: bytes, mime: XLSX_MIME }]);
