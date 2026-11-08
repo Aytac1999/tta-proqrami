@@ -31,7 +31,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph, Table, TableStyle
 
-VERSION = "1.5.0"
+VERSION = "1.5.1"
 ETAX = "https://new.e-taxes.gov.az"
 REYESTR_URL = ETAX + "/api/po/authless/public/v1/authless/findTaxpayer"
 KESH_FAYLI = "direktorlar.json"
@@ -1032,8 +1032,8 @@ def pencere_rejimi(sinaq=False):
         pass
     kok = tk.Tk()
     kok.title(f"TTA proqramı {VERSION}")
-    kok.geometry("860x740")
-    kok.minsize(760, 620)
+    kok.geometry("640x560")
+    kok.minsize(600, 520)
     try:
         ttk.Style().theme_use("vista")
     except Exception:
@@ -1055,35 +1055,35 @@ def pencere_rejimi(sinaq=False):
 
     def blok(valid, ad):
         f = ttk.LabelFrame(kok, text=f" {ad} ")
-        f.pack(fill="x", padx=14, pady=6)
+        f.pack(fill="x", padx=8, pady=2)
         return f
 
     # --- 1. nə hazırlansın
     f1 = blok(kok, "1. Nə hazırlansın?")
-    for deyer, metn in (("pdf", "PDF qaimələrdən TTA hazırla"),
-                        ("terkib", "e-taxes: qaimə tərkibi (Excel)"),
-                        ("tta", "e-taxes: TTA hazırla (Excel + PDF)")):
-        ttk.Radiobutton(f1, text=metn, value=deyer, variable=v_rejim, command=lambda: gorunus()).pack(anchor="w", padx=10, pady=2)
+    for deyer, metn in (("pdf", "PDF qaimələrdən TTA"),
+                        ("terkib", "e-taxes: tərkib (Excel)"),
+                        ("tta", "e-taxes: TTA (Excel + PDF)")):
+        ttk.Radiobutton(f1, text=metn, value=deyer, variable=v_rejim, command=lambda: gorunus()).pack(side="left", padx=(8, 4), pady=2)
 
     # --- PDF
     f2 = blok(kok, "PDF qaimələrin qovluğu")
     e = ttk.Entry(f2, textvariable=v_pdf)
-    e.pack(side="left", fill="x", expand=True, padx=(10, 6), pady=8)
+    e.pack(side="left", fill="x", expand=True, padx=(8, 4), pady=3)
     b = ttk.Button(f2, text="Seç...", command=lambda: v_pdf.set(filedialog.askdirectory(initialdir=v_pdf.get()) or v_pdf.get()))
-    b.pack(side="left", padx=(0, 10))
+    b.pack(side="left", padx=(0, 8))
     pdf_vid += [e, b]
 
     # --- e-taxes
     f3 = blok(kok, "e-taxes seçimləri")
     sat = ttk.Frame(f3)
-    sat.pack(fill="x", padx=10, pady=(8, 2))
+    sat.pack(fill="x", padx=8, pady=(3, 1))
     ttk.Label(sat, text="Hansı qaimələr:").pack(side="left")
     for deyer, metn in (("hamisi", "Hamısı"), ("gelen", "Gələn"), ("gonderilen", "Göndərilən")):
         r = ttk.Radiobutton(sat, text=metn, value=deyer, variable=v_ist)
         r.pack(side="left", padx=8)
         etaxes_vid.append(r)
     sat = ttk.Frame(f3)
-    sat.pack(fill="x", padx=10, pady=2)
+    sat.pack(fill="x", padx=8, pady=1)
     ttk.Label(sat, text="Başlanğıc tarix:").pack(side="left")
     e1 = ttk.Entry(sat, textvariable=v_dan, width=12)
     e1.pack(side="left", padx=(6, 14))
@@ -1102,7 +1102,7 @@ def pencere_rejimi(sinaq=False):
         aralik(son.replace(day=1), son)
 
     sat = ttk.Frame(f3)
-    sat.pack(fill="x", padx=10, pady=2)
+    sat.pack(fill="x", padx=8, pady=1)
     for metn, fn in (("Bu ay", lambda: aralik(bu.replace(day=1), bu)), ("Keçən ay", kecen_ay),
                      ("Son 30 gün", lambda: aralik(bu - datetime.timedelta(days=30), bu)),
                      ("Bu il", lambda: aralik(datetime.date(bu.year, 1, 1), bu))):
@@ -1110,24 +1110,24 @@ def pencere_rejimi(sinaq=False):
         bb.pack(side="left", padx=(0, 6))
         etaxes_vid.append(bb)
     sat = ttk.Frame(f3)
-    sat.pack(fill="x", padx=10, pady=2)
-    ttk.Label(sat, text="VÖEN (boş = hamısı):", width=24).pack(side="left")
+    sat.pack(fill="x", padx=8, pady=1)
+    ttk.Label(sat, text="VÖEN (boş = hamısı):", width=26).pack(side="left")
     e3 = ttk.Entry(sat, textvariable=v_voen)
     e3.pack(side="left", fill="x", expand=True)
     sat = ttk.Frame(f3)
-    sat.pack(fill="x", padx=10, pady=2)
-    ttk.Label(sat, text="Qaimə nömrələri (boş = hamısı):", width=24).pack(side="left")
+    sat.pack(fill="x", padx=8, pady=1)
+    ttk.Label(sat, text="Qaimə nömrələri (boş=hamısı):", width=26).pack(side="left")
     e4 = ttk.Entry(sat, textvariable=v_nomre)
     e4.pack(side="left", fill="x", expand=True)
-    c1 = ttk.Checkbutton(f3, text="Tarixçə, versiya, düzəliş və əlaqəli (qaytarma) qaimələri də götür (yalnız tərkib üçün; yavaşdır)",
+    c1 = ttk.Checkbutton(f3, text="Tarixçə, versiya, düzəliş, əlaqəli qaimələri də götür (tərkib üçün; yavaş)",
                          variable=v_tarixce)
-    c1.pack(anchor="w", padx=10, pady=(4, 8))
+    c1.pack(anchor="w", padx=10, pady=(2, 3))
     etaxes_vid += [e3, e4]
 
     # --- nəticə qovluğu
     f4 = blok(kok, "Nəticə qovluğu")
-    ttk.Entry(f4, textvariable=v_cixis).pack(side="left", fill="x", expand=True, padx=(10, 6), pady=8)
-    ttk.Button(f4, text="Seç...", command=lambda: v_cixis.set(filedialog.askdirectory(initialdir=v_cixis.get()) or v_cixis.get())).pack(side="left", padx=(0, 10))
+    ttk.Entry(f4, textvariable=v_cixis).pack(side="left", fill="x", expand=True, padx=(8, 4), pady=3)
+    ttk.Button(f4, text="Seç...", command=lambda: v_cixis.set(filedialog.askdirectory(initialdir=v_cixis.get()) or v_cixis.get())).pack(side="left", padx=(0, 8))
 
     def gorunus():
         rj = v_rejim.get()
@@ -1139,18 +1139,18 @@ def pencere_rejimi(sinaq=False):
 
     # --- düymələr
     dym = ttk.Frame(kok)
-    dym.pack(fill="x", padx=14, pady=(8, 2))
+    dym.pack(fill="x", padx=8, pady=(4, 0))
     b_basla = ttk.Button(dym, text="Başla", command=lambda: basla())
     b_basla.pack(side="left")
     b_dayan = ttk.Button(dym, text="Dayandır", command=lambda: dayan())
     b_dayan.pack(side="left", padx=8)
     ttk.Button(dym, text="Nəticə qovluğunu aç", command=lambda: ac()).pack(side="left")
-    ttk.Label(kok, textvariable=v_durum).pack(anchor="w", padx=14, pady=(6, 0))
+    ttk.Label(kok, textvariable=v_durum).pack(anchor="w", padx=8, pady=(2, 0))
     pb = ttk.Progressbar(kok, mode="determinate", maximum=100)
-    pb.pack(fill="x", padx=14, pady=4)
+    pb.pack(fill="x", padx=8, pady=2)
     cerc = ttk.Frame(kok)
-    cerc.pack(fill="both", expand=True, padx=14, pady=(2, 12))
-    log = tk.Text(cerc, height=10, wrap="word", state="disabled")
+    cerc.pack(fill="both", expand=True, padx=8, pady=(2, 6))
+    log = tk.Text(cerc, height=6, wrap="word", state="disabled")
     sk = ttk.Scrollbar(cerc, command=log.yview)
     log.configure(yscrollcommand=sk.set)
     sk.pack(side="right", fill="y")

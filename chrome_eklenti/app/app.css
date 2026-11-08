@@ -4,20 +4,20 @@ header{display:flex;align-items:center;gap:10px;background:#1f4e8c;color:#fff;bo
 header img{width:34px;height:34px}h1{margin:0;font-size:16px}.alt{font-size:12px;opacity:.8}
 header .sag{margin-left:auto;text-align:right;display:flex;flex-direction:column;gap:4px}
 .nisan{padding:2px 10px;border-radius:99px;background:#6b7a8c;font-size:12px}.nisan.ok{background:#22a05a}.nisan.yox{background:#c0392b}
-.xeb{margin:12px 0;background:#fff4d6;border:1px solid #e6c15a;border-radius:8px;padding:10px 14px}
-nav{display:flex;gap:6px;margin:14px 0 0}nav button{flex:1;padding:8px 4px;font-size:12px;border:1px solid #c5d0e0;border-bottom:0;background:#e4ebf5;border-radius:10px 10px 0 0;cursor:pointer;font-weight:600;color:#38506e}
+.xeb{margin:6px 0;font-size:12px;background:#fff4d6;border:1px solid #e6c15a;border-radius:8px;padding:10px 14px}
+nav{display:flex;gap:4px;margin:8px 0 0}nav button{flex:1;padding:8px 4px;font-size:12px;border:1px solid #c5d0e0;border-bottom:0;background:#e4ebf5;border-radius:10px 10px 0 0;cursor:pointer;font-weight:600;color:#38506e}
 nav button.aktiv{background:#fff;color:#1f4e8c}
-.bolme{background:#fff;border:1px solid #c5d0e0;border-radius:0 0 10px 10px;padding:10px;display:flex;flex-direction:column;gap:10px}
+.bolme{background:#fff;border:1px solid #c5d0e0;border-radius:0 0 10px 10px;padding:8px;display:flex;flex-direction:column;gap:6px}
 label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:#4a5d73;flex:1 1 130px;min-width:120px}
 input[type=text],input[type=date],select{width:100%}
-input[type=text],input[type=date],select{padding:7px 9px;border:1px solid #b7c4d6;border-radius:6px;font-size:14px;background:#fff}
-.sira{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin:6px 0}.sira.kicik{margin:0}
+input[type=text],input[type=date],select{padding:4px 7px;border:1px solid #b7c4d6;border-radius:5px;font-size:13px;background:#fff}
+.sira{display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap;margin:2px 0}.sira.kicik{margin:0}
 label.cek{flex-direction:row;align-items:center;gap:6px;font-size:13px;color:#1c2b3a}
 button{font:inherit;cursor:pointer;border-radius:6px;border:1px solid #b7c4d6;background:#f3f6fb;padding:7px 12px}
-button.esas{background:#1f4e8c;color:#fff;border-color:#1f4e8c;padding:10px;font-weight:600;font-size:15px}button.esas:disabled{opacity:.5;cursor:default}
+button.esas{background:#1f4e8c;color:#fff;border-color:#1f4e8c;padding:7px;font-weight:600;font-size:14px}button.esas:disabled{opacity:.5;cursor:default}
 button.lnk{border:0;background:none;color:#1f4e8c;text-decoration:underline;padding:0 6px}
 #zolaq{flex:1;height:10px;background:#dde5f0;border-radius:99px;overflow:hidden}#dolu{height:100%;width:0;background:#22a05a;transition:width .2s}
-#jurnal{background:#0f1c2b;color:#c9e3ff;border-radius:8px;padding:10px;min-height:80px;max-height:200px;overflow:auto;white-space:pre-wrap;font:12px Consolas,monospace}
+#jurnal{background:#0f1c2b;color:#c9e3ff;border-radius:8px;padding:10px;min-height:60px;max-height:160px;overflow:auto;white-space:pre-wrap;font:12px Consolas,monospace}
 #cap{display:none}
 @media print{
   @page{size:A4;margin:14mm 12mm}
