@@ -31,7 +31,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph, Table, TableStyle
 
-VERSION = "1.5.10"
+VERSION = "1.5.11"
 ETAX = "https://new.e-taxes.gov.az"
 REYESTR_URL = ETAX + "/api/po/authless/public/v1/authless/findTaxpayer"
 KESH_FAYLI = "direktorlar.json"
@@ -950,13 +950,29 @@ def senedler(sened):
     return {x.strip() for x in sened.split(",") if x.strip() in ("tta", "protokol", "hesab")}
 
 
+def _fayl_temiz(x, n=30):
+    x = re.sub(r'[\\/:*?"<>|\r\n]+', " ", str(x or ""))
+    return re.sub(r"\s+", " ", x).strip(" .")[:n].strip(" .")
+
+
 def fayl_adi(q, sat, alc):
-    """<qaimə №>_<qarşı tərəfin adı>_<qaimə tarixi> (qarşı tərəf: gələndə göndərən, göndəriləndə qəbul edən)"""
-    teref_ = alc if q.get("istiqamet") == "Göndərilən" else sat
-    ad = re.sub(r'[\\/:*?"<>|\r\n]+', " ", str(teref_.get("ad") or "")).strip(" .")
-    ad = re.sub(r"\s+", " ", ad)[:45].strip(" .")
+    """<qaimə №>_<satıcı>_<alıcı>_<qaimə tarixi>"""
     tarix = str(q.get("tarix") or "")[:10]
-    return "_".join(x for x in (q["seriya"] + q["nomre"], ad, tarix) if x)
+    return "_".join(x for x in (q["seriya"] + q["nomre"], _fayl_temiz(sat.get("ad")), _fayl_temiz(alc.get("ad")), tarix) if x)
+
+
+def oz_vergi_odeyicisi(qaimeler):
+    """Sistemindən götürülən vergi ödəyicisi = bütün qaimələrdə ən çox rast gəlinən VÖEN"""
+    say, ad = {}, {}
+    for q in qaimeler:
+        for v, a in ((q.get("gonderen_voen"), q.get("gonderen_ad")), (q.get("qebul_voen"), q.get("qebul_ad"))):
+            if v:
+                say[v] = say.get(v, 0) + 1
+                ad.setdefault(v, a)
+    if not say:
+        return ""
+    v = max(say, key=say.get)
+    return _fayl_temiz(ad.get(v) or v, 40)
 
 
 def tta_yaz(q, cixis, oflayn, sened="ikisi"):
@@ -1140,7 +1156,7 @@ def isle_ve_yaz(a):
     qaimeler = etaxes_rejimi(a, a.cixis) if a.etaxes else pdf_rejimi(a.giris, a.cixis, a.oflayn, getattr(a, "sened", "ikisi"))
     if qaimeler:
         if not getattr(a, "yalniz_tta", False):
-            terkib_xlsx(os.path.join(a.cixis, "qaime_terkibi.xlsx"), qaimeler)
+            terkib_xlsx(os.path.join(a.cixis, "_".join(x for x in ("qaime_terkibi", oz_vergi_odeyicisi(qaimeler)) if x) + ".xlsx"), qaimeler)
         print(f"Hazırdır ({len(qaimeler)} qaimə): {os.path.abspath(a.cixis)}")
     else:
         print("Heç bir qaimə işlənmədi.")

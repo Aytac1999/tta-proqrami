@@ -20,11 +20,17 @@
   }));
 
   // tarix: əllə yazılır, nöqtələr avtomatik düşür (08 -> 08. ; 10 -> 08.10. ; 2026 -> 08.10.2026)
-  // fayl adı: <qaimə №>_<qarşı tərəfin adı>_<tarix>  (gələndə göndərən, göndəriləndə qəbul edən)
+  // fayl adı: <qaimə №>_<satıcı>_<alıcı>_<tarix>
+  const faylTemiz = (x, n = 30) => String(x || "").replace(/[\\/:*?"<>|\r\n]+/g, " ").replace(/\s+/g, " ").trim().replace(/^[ .]+|[ .]+$/g, "").slice(0, n).replace(/[ .]+$/, "");
   function faylAdi(x, sat, alc) {
-    const t = x.istiqamet === "Göndərilən" ? alc : sat;
-    const ad = String((t && t.ad) || "").replace(/[\\/:*?"<>|\r\n]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 45).replace(/^[ .]+|[ .]+$/g, "");
-    return [x.seriya + x.nomre, ad, String(x.tarix || "").slice(0, 10)].filter(Boolean).join("_");
+    return [x.seriya + x.nomre, faylTemiz(sat && sat.ad), faylTemiz(alc && alc.ad), String(x.tarix || "").slice(0, 10)].filter(Boolean).join("_");
+  }
+  // sistemindən götürülən vergi ödəyicisi = ən çox rast gəlinən VÖEN
+  function ozVergiOdeyicisi(qs) {
+    const say = {}, ad = {};
+    for (const q of qs) for (const [v, a] of [[q.gonderen_voen, q.gonderen_ad], [q.qebul_voen, q.qebul_ad]]) if (v) { say[v] = (say[v] || 0) + 1; if (!(v in ad)) ad[v] = a; }
+    const k = Object.keys(say).sort((a, b) => say[b] - say[a])[0];
+    return k ? faylTemiz(ad[k] || k, 40) : "";
   }
   function tarixMaska(xam, silme) {
     const hisse = []; let cari = "";
@@ -178,7 +184,7 @@
     const q = await qaimeleriTopla({ ...o, sade: !o.f("tarixce") }, (i, n) => { progress(i, n); netice([["", `İşləyir … ${i}/${n}`]]); });
     if (!q.length) return netice([["", `${aralikYazi(o)} aralığında uyğun qaimə tapılmadı.`]]);
     const bytes = await xlsxYarat(terkibSehifeleri(q));
-    const yer = await saxla([{ ad: `qaime_terkibi_${bugun()}.xlsx`, data: bytes, mime: XLSX_MIME }]);
+    const yer = await saxla([{ ad: `qaime_terkibi${ozVergiOdeyicisi(q) ? "_" + ozVergiOdeyicisi(q) : ""}_${bugun()}.xlsx`, data: bytes, mime: XLSX_MIME }]);
     const sətir = q.reduce((a, x) => a + x.mallar.length, 0);
     netice([["", `${aralikYazi(o)} aralığında ${q.length} qaimə tapıldı (gələn: ${say(q, "Gələn")}, göndərilən: ${say(q, "Göndərilən")}).`],
       ["", `Qaimə tərkibi Excel-i hazırlandı: ${sətir} mal sətri.`], ["ok", `Yerləşdirildi: ${yer}.`]]);
