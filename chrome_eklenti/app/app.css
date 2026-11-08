@@ -1,0 +1,32 @@
+*{box-sizing:border-box}body{margin:0;font:14px/1.4 "Segoe UI",Arial,sans-serif;color:#1c2b3a;background:#f3f6fb}
+#ui{max-width:860px;margin:0 auto;padding:16px}
+header{display:flex;align-items:center;gap:14px;background:#1f4e8c;color:#fff;border-radius:12px;padding:12px 16px}
+header img{width:48px;height:48px}h1{margin:0;font-size:20px}.alt{font-size:12px;opacity:.8}
+header .sag{margin-left:auto;text-align:right;display:flex;flex-direction:column;gap:4px}
+.nisan{padding:2px 10px;border-radius:99px;background:#6b7a8c;font-size:12px}.nisan.ok{background:#22a05a}.nisan.yox{background:#c0392b}
+.xeb{margin:12px 0;background:#fff4d6;border:1px solid #e6c15a;border-radius:8px;padding:10px 14px}
+nav{display:flex;gap:6px;margin:14px 0 0}nav button{flex:1;padding:10px;border:1px solid #c5d0e0;border-bottom:0;background:#e4ebf5;border-radius:10px 10px 0 0;cursor:pointer;font-weight:600;color:#38506e}
+nav button.aktiv{background:#fff;color:#1f4e8c}
+.bolme{background:#fff;border:1px solid #c5d0e0;border-radius:0 0 12px 12px;padding:16px;display:flex;flex-direction:column;gap:10px}
+label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:#4a5d73;flex:1}
+input[type=text],input[type=date],select{padding:7px 9px;border:1px solid #b7c4d6;border-radius:6px;font-size:14px;background:#fff}
+.sira{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin:6px 0}.sira.kicik{margin:0}
+label.cek{flex-direction:row;align-items:center;gap:6px;font-size:13px;color:#1c2b3a}
+button{font:inherit;cursor:pointer;border-radius:6px;border:1px solid #b7c4d6;background:#f3f6fb;padding:7px 12px}
+button.esas{background:#1f4e8c;color:#fff;border-color:#1f4e8c;padding:10px;font-weight:600;font-size:15px}button.esas:disabled{opacity:.5;cursor:default}
+button.lnk{border:0;background:none;color:#1f4e8c;text-decoration:underline;padding:0 6px}
+#zolaq{flex:1;height:10px;background:#dde5f0;border-radius:99px;overflow:hidden}#dolu{height:100%;width:0;background:#22a05a;transition:width .2s}
+#jurnal{background:#0f1c2b;color:#c9e3ff;border-radius:8px;padding:10px;min-height:120px;max-height:300px;overflow:auto;white-space:pre-wrap;font:12px Consolas,monospace}
+#cap{display:none}
+@media print{
+  @page{size:A4;margin:14mm 12mm}
+  body.chapda #ui{display:none}body.chapda #cap{display:block}body{background:#fff}
+  .akt{page-break-after:always;font:11px/1.35 Arial,sans-serif;color:#000}.akt:last-child{page-break-after:auto}
+  .akt .ust{display:flex;justify-content:space-between}.akt h2{text-align:center;font-size:15px;margin:22px 0 14px}
+  .akt .giris{margin:0 0 12px}.akt table{border-collapse:collapse;width:100%}
+  .akt .mal th,.akt .mal td{border:1px solid #8896aa;padding:2px 4px;vertical-align:middle}.akt .mal th{background:#dce6f2;text-align:center}
+  .akt .mal thead{display:table-header-group}.akt .mal tr{page-break-inside:avoid}
+  .akt .c{text-align:center}.akt .r{text-align:right}
+  .akt .yek{width:230px;margin:0 0 0 auto}.akt .yek td{border:1px solid #8896aa;background:#eef2f8;padding:2px 4px;text-align:right}
+  .akt .yaz{margin:16px 0 30px}.akt .imza{display:flex;gap:40px;page-break-inside:avoid}.akt .blok{flex:1}
+}

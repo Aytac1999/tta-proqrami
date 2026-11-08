@@ -31,7 +31,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph, Table, TableStyle
 
-VERSION = "1.4.0"
+VERSION = "1.5.0"
 ETAX = "https://new.e-taxes.gov.az"
 REYESTR_URL = ETAX + "/api/po/authless/public/v1/authless/findTaxpayer"
 KESH_FAYLI = "direktorlar.json"
@@ -59,6 +59,9 @@ VARSAYILAN = {
     "giris_sablon": ("Biz, aşağıda imza edənlər, Satıcı {satici} (VÖEN {satici_voen}) və Alıcı {alici} (VÖEN {alici_voen}), "
                      "bu aktı tərtib edirik ki, {esas}aşağıda göstərilən mallar Satıcı tərəfindən təhvil verilmiş, "
                      "Alıcı tərəfindən qəbul edilmişdir."),
+    "protokol_yarat": True,  # TTA ilə birlikdə "Qiymət razılaşdırma protokolu" da hazırlansın
+    "protokol_basliq": "QİYMƏT RAZILAŞDIRMA PROTOKOLU",
+    "protokol_giris_sablon": "",  # boşdursa TTA mətni götürülür ("aktı" sözü "protokolu" ilə əvəz olunur)
     "iddia_cumlesi": "Tərəflərin həcm, keyfiyyət və müddətə dair bir-birinə qarşı iddiası yoxdur.",
     "direktor_duzelis": {},                                    # {"VÖEN": "Ad Soyad Ata adı oğlu"}
     "esas_evezlemeleri": [["müqaviləsi\\s*$", "müqaviləsinə"]],  # [regex, əvəz]
@@ -647,8 +650,11 @@ def esas_cumle(q):
     return es + " "
 
 
-def giris_metni(q, sat, alc):
-    return AYAR["giris_sablon"].format(satici=sat["ad"], satici_voen=sat["voen"], alici=alc["ad"],
+def giris_metni(q, sat, alc, protokol=False):
+    sablon = AYAR["giris_sablon"]
+    if protokol:
+        sablon = AYAR.get("protokol_giris_sablon") or sablon.replace("bu aktı", "bu protokolu")
+    return sablon.format(satici=sat["ad"], satici_voen=sat["voen"], alici=alc["ad"],
                                        alici_voen=alc["voen"], esas=esas_cumle(q))
 
 
@@ -657,17 +663,18 @@ def edv_etiketi(q):
 
 
 # --------------------------------------------------------------------------- TTA PDF
-def tta_pdf(yol, q, sat, alc):
+def tta_pdf(yol, q, sat, alc, protokol=False):
     no = q["seriya"] + q["nomre"]
+    basliq = AYAR["protokol_basliq"] if protokol else "TƏHVİL-TƏSLİM AKTI"
     W, H = letter
     c = canvas.Canvas(yol, pagesize=letter)
-    c.setTitle(f"Təhvil-təslim aktı {no}")
+    c.setTitle(f"{basliq.capitalize()} {no}")
     L, R = 45, W - 45
     y = H - 52
     c.setFont("FB", 8.5); c.drawString(L, y, AYAR["sheher"]); c.drawRightString(R, y, q["tarix"])
-    y -= 36; c.setFont("FB", 11); c.drawCentredString(W / 2, y, f"TƏHVİL-TƏSLİM AKTI № {no}")
+    y -= 36; c.setFont("FB", 11); c.drawCentredString(W / 2, y, f"{basliq} № {no}")
     y -= 24
-    p = Paragraph(giris_metni(q, sat, alc), ParagraphStyle("p", fontName="F", fontSize=8, leading=10.5))
+    p = Paragraph(giris_metni(q, sat, alc, protokol), ParagraphStyle("p", fontName="F", fontSize=8, leading=10.5))
     w, h = p.wrap(R - L, 200); p.drawOn(c, L, y - h); y -= h + 14
 
     hs = ParagraphStyle("h", fontName="FB", fontSize=7.5, leading=9, alignment=TA_CENTER)
@@ -721,9 +728,10 @@ def tta_pdf(yol, q, sat, alc):
 
 
 # --------------------------------------------------------------------------- TTA Excel
-def tta_xlsx(yol, q, sat, alc):
+def tta_xlsx(yol, q, sat, alc, protokol=False):
     no = q["seriya"] + q["nomre"]
-    wb = Workbook(); ws = wb.active; ws.title = "TTA"
+    basliq = AYAR["protokol_basliq"] if protokol else "TƏHVİL-TƏSLİM AKTI"
+    wb = Workbook(); ws = wb.active; ws.title = "Protokol" if protokol else "TTA"
     for col, wd in zip("ABCDEFG", [5, 46, 15, 11, 9, 13, 14]):
         ws.column_dimensions[col].width = wd
     thin = Side(style="thin", color="8896AA"); bd = Border(left=thin, right=thin, top=thin, bottom=thin)
@@ -731,9 +739,9 @@ def tta_xlsx(yol, q, sat, alc):
     ar = lambda **k: Font(name="Arial", size=9, **k)
     ws["A1"] = AYAR["sheher"]; ws["A1"].font = ar(bold=True)
     ws["G1"] = q["tarix"]; ws["G1"].font = ar(bold=True); ws["G1"].alignment = Alignment(horizontal="right")
-    ws.merge_cells("A3:G3"); ws["A3"] = f"TƏHVİL-TƏSLİM AKTI № {no}"
+    ws.merge_cells("A3:G3"); ws["A3"] = f"{basliq} № {no}"
     ws["A3"].font = Font(name="Arial", bold=True, size=12); ws["A3"].alignment = Alignment(horizontal="center")
-    ws.merge_cells("A5:G7"); ws["A5"] = giris_metni(q, sat, alc); ws["A5"].font = ar()
+    ws.merge_cells("A5:G7"); ws["A5"] = giris_metni(q, sat, alc, protokol); ws["A5"].font = ar()
     ws["A5"].alignment = Alignment(wrap_text=True, vertical="top")
     r = 9
     for j, h in enumerate(["№", "Malın / işin / xidmətin adı", "Kod", "Ölçü vahidi", "Miqdar", "Vahidin qiyməti", "Məbləğ"], 1):
@@ -831,6 +839,10 @@ def tta_yaz(q, cixis, oflayn):
     tta_xlsx(os.path.join(cixis, f"TTA_{ad}.xlsx"), q, sat, alc)
     tta_pdf(os.path.join(cixis, f"TTA_{ad}.pdf"), q, sat, alc)
     print(f"+ TTA_{ad}: {alc['ad']}  yekun {fmt(q['yekun'])}  direktor: {alc['direktor'] or '(tapılmadı)'}")
+    if AYAR.get("protokol_yarat", True):
+        tta_xlsx(os.path.join(cixis, f"Protokol_{ad}.xlsx"), q, sat, alc, True)
+        tta_pdf(os.path.join(cixis, f"Protokol_{ad}.pdf"), q, sat, alc, True)
+        print(f"+ Protokol_{ad}")
 
 
 def pdf_rejimi(girisler, cixis, oflayn):

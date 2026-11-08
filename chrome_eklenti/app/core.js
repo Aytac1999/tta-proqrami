@@ -1,0 +1,372 @@
+// Köməkçi funksiyalar, e-taxes sorğuları və qaimənin çevrilməsi (Python proqramının eyni məntiqi).
+const ETAX = "https://new.e-taxes.gov.az";
+const REYESTR_URL = ETAX + "/api/po/authless/public/v1/authless/findTaxpayer";
+const AYAR_DEF = {
+  sheher: "Bakı şəhəri",
+  giris_sablon: "Biz, aşağıda imza edənlər, Satıcı {satici} (VÖEN {satici_voen}) və Alıcı {alici} (VÖEN {alici_voen}), bu aktı tərtib edirik ki, {esas}aşağıda göstərilən mallar Satıcı tərəfindən təhvil verilmiş, Alıcı tərəfindən qəbul edilmişdir.",
+  iddia_cumlesi: "Tərəflərin həcm, keyfiyyət və müddətə dair bir-birinə qarşı iddiası yoxdur.",
+  protokol_yarat: true,
+  protokol_basliq: "QİYMƏT RAZILAŞDIRMA PROTOKOLU",
+  protokol_giris_sablon: "",
+  direktor_duzelis: {},
+  esas_evezlemeleri: [["müqaviləsi\\s*$", "müqaviləsinə"]],
+  tip_adlari: {},
+};
+let AYAR = { ...AYAR_DEF };
+let LOG = (m) => {};
+let DAYANDI = () => false;
+
+const STATUS_AZ = {
+  approved: "Təsdiqləndi", onApproval: "Təsdiq gözləyir", approvedBySystem: "Sistem tərəfindən təsdiqlənib",
+  updateApproval: "Dəyişiklik təsdiqi gözləyir", updateRequested: "Dəyişiklik tələb olunub",
+  cancelRequested: "Ləğv tələb olunub", onApprovalEdited: "Düzəliş təsdiq gözləyir", deactivated: "Ləğv edilib",
+  cancelationRefused: "Ləğvetmə rədd edilib", correctionRefused: "Düzəliş rədd edilib",
+};
+const NOV_AZ = { current: "Cari", corrected: "Düzəliş edilmiş" };
+const TIP_AZ = {
+  MT: "Malların, işlərin və xidmətlərin təqdim edilməsi barədə elektron qaimə-faktura",
+  MQ: "Malların qaytarılması barədə elektron qaimə-faktura",
+};
+
+// ------------------------------------------------------------------ köməkçilər
+function azLower(s) { return s.replace(/İ/g, "i").replace(/I/g, "ı").toLowerCase(); }
+function azAdlandir(ad) {
+  return ad.trim().split(/\s+/).filter(Boolean).map((w) => {
+    const k = azLower(w);
+    if (["oğlu", "qızı", "oglu", "qizi", "ogly"].includes(k)) return k;
+    return (k[0] === "i" ? "İ" : k[0].toLocaleUpperCase("az")) + k.slice(1);
+  }).join(" ");
+}
+function fmt(x) {
+  const neg = x < 0;
+  let [i, d] = Math.abs(x).toFixed(2).split(".");
+  i = i.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return (neg ? "-" : "") + i + "," + d;
+}
+function fmtQiymet(x) {
+  const t = Math.abs(x).toFixed(9).replace(/0+$/, "");
+  const dec = t.includes(".") ? t.split(".")[1] : "";
+  if (dec.length <= 2) return fmt(x);
+  return (x < 0 ? "-" : "") + String(Math.floor(Math.abs(x))).replace(/\B(?=(\d{3})+(?!\d))/g, ".") + "," + dec;
+}
+function num(s) {
+  const t = String(s == null ? "" : s).trim().replace(/\s/g, "");
+  const v = t ? parseFloat(t) : 0;
+  return isNaN(v) ? 0 : v;
+}
+const r2 = (x) => Math.round((x + Number.EPSILON) * 100) / 100;
+const TEKLER = ["", "bir", "iki", "üç", "dörd", "beş", "altı", "yeddi", "səkkiz", "doqquz"];
+const ONLAR = ["", "on", "iyirmi", "otuz", "qırx", "əlli", "altmış", "yetmiş", "səksən", "doxsan"];
+function ucReqemli(n) {
+  const s = [], y = Math.floor(n / 100), o = Math.floor(n / 10) % 10, t = n % 10;
+  if (y) s.push((y === 1 ? "" : TEKLER[y] + " ") + "yüz");
+  if (o) s.push(ONLAR[o]);
+  if (t) s.push(TEKLER[t]);
+  return s.join(" ");
+}
+function yaziIle(n) {
+  if (n === 0) return "sıfır";
+  const p = [];
+  for (const [bol, ad] of [[1e9, "milyard"], [1e6, "milyon"], [1000, "min"]]) {
+    const q = Math.floor(n / bol);
+    if (q) { p.push(ad === "min" && q === 1 ? "min" : ucReqemli(q) + " " + ad); n %= bol; }
+  }
+  if (n) p.push(ucReqemli(n));
+  return p.join(" ");
+}
+function meblegYazi(yekun) {
+  yekun = r2(yekun);
+  const m = Math.floor(yekun), q = Math.round((yekun - m) * 100);
+  const s = `${yaziIle(m)} manat ${String(q).padStart(2, "0")} qəpik`;
+  return (s[0] === "i" ? "İ" : s[0].toUpperCase()) + s.slice(1);
+}
+function tarixCevir(s) {
+  s = String(s || "");
+  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return `${m[3]}.${m[2]}.${m[1]}`;
+  m = s.match(/^(\d{2})[-./](\d{2})[-./](\d{4})/);
+  if (m) return `${m[1]}.${m[2]}.${m[3]}`;
+  return s;
+}
+function tarixSaat(s) {
+  s = String(s || "");
+  if (!s) return "";
+  if (/^\d{4}-\d{2}-\d{2}T/.test(s) && /(Z|[+-]\d{2}:?\d{2})$/.test(s)) {
+    const d = new Date(s);
+    if (!isNaN(d)) {
+      const p = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Baku", day: "2-digit", month: "2-digit",
+        year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(d).map((x) => [x.type, x.value]));
+      return `${p.day}.${p.month}.${p.year} ${p.hour === "24" ? "00" : p.hour}:${p.minute}`;
+    }
+  }
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+  if (m) return `${m[3]}.${m[2]}.${m[1]} ${m[4]}:${m[5]}`;
+  return tarixCevir(s);
+}
+function iso(s) { // dd.mm.yyyy -> yyyy-mm-dd
+  const m = String(s || "").match(/^(\d{2})\.(\d{2})\.(\d{4})/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : null;
+}
+function tarixTap(x) {
+  for (const k of ["creationDate", "createdAt", "invoiceDate", "date", "creationTime", "created", "createDate", "modifiedAt"]) {
+    const v = x[k];
+    if (!v) continue;
+    const s = String(v);
+    let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+    m = s.match(/^(\d{2})[.\-](\d{2})[.\-](\d{4})/);
+    if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+  }
+  return null;
+}
+const araliqda = (t, dan, ya) => dan <= t && t <= ya;  // ISO sətirləri
+const ddmmyyyy = (isoS) => isoS.split("-").reverse().join("-");
+const gozle = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// ------------------------------------------------------------------ reyestr (direktor)
+async function reyestr(voen) {
+  const kesh = (await KOPRU("get", { key: "direktorlar" })) || {};
+  if (kesh[voen]) return kesh[voen];
+  const r = await KOPRU("fetch", { url: REYESTR_URL, metod: "POST",
+    json: { tin: voen, type: "legalEntity", serviceCode: "checkLegalName", isStateRegistry: true } });
+  try {
+    const t = JSON.parse(r.text).taxpayers[0];
+    const n = { ad: t.name, direktor: azAdlandir(t.legalTaxpayerStatus.legitimate) };
+    kesh[voen] = n;
+    await KOPRU("set", { key: "direktorlar", value: kesh });
+    return n;
+  } catch (e) { LOG(`  ! Reyestr sorğusu alınmadı (${voen})`); return null; }
+}
+async function teref(voen, adQaime) {
+  const r = await reyestr(voen);
+  const ad = (r && r.ad) || adQaime || voen;
+  const full = ad.startsWith('"') || ad.includes("Cəmiyyət") ? ad : `"${ad}"`;
+  const kicik = azLower(ad.replace(/^"|"$/g, "").trim());
+  const rol = /(oğlu|qızı)$/.test(kicik) ? "Fərdi Sahibkar" : "Direktor";
+  let direktor = (AYAR.direktor_duzelis || {})[voen] || (r && r.direktor) || "";
+  if (!direktor && rol === "Fərdi Sahibkar") direktor = azAdlandir(ad.replace(/^"|"$/g, ""));
+  return { voen, ad: full, rol, direktor };
+}
+function esasCumle(q) {
+  let es = (q.esas || "").trim();
+  if (!es) return "";
+  for (const [desen, evez] of AYAR.esas_evezlemeleri || []) es = es.replace(new RegExp(desen), evez);
+  if (!/əsasən\s*$/.test(es)) es += " əsasən";
+  return es + " ";
+}
+function girisMetni(q, sat, alc, protokol) {
+  let sablon = AYAR.giris_sablon;
+  if (protokol) sablon = AYAR.protokol_giris_sablon || sablon.replace("bu aktı", "bu protokolu");
+  const d = { satici: sat.ad, satici_voen: sat.voen, alici: alc.ad, alici_voen: alc.voen, esas: esasCumle(q) };
+  return sablon.replace(/\{(\w+)\}/g, (a, k) => (k in d ? d[k] : a));
+}
+const edvEtiketi = (q) => (q.cemi && Math.abs(q.edv - r2(q.cemi * 0.18)) < 0.02 ? "ƏDV (18%)" : "ƏDV");
+
+// ------------------------------------------------------------------ e-taxes sorğuları
+class SessiyaXetasi extends Error {}
+class ETaxes {
+  constructor() { this.bearer = false; }
+  async istek(metod, yol, { json, params } = {}) {
+    let url = ETAX + yol;
+    if (params) url += "?" + new URLSearchParams(params);
+    const gozleyis = [3, 6, 12, 20, 30];
+    for (let ev = 0; ev < 2; ev++) {
+      let r;
+      for (let i = 0; i <= gozleyis.length; i++) {
+        r = await KOPRU("fetch", { url, metod, json, auth: true, bearer: this.bearer });
+        if (r.sessiya) throw new SessiyaXetasi("e-taxes-ə daxil olunmayıb");
+        if (!r.sebeke) break;
+        if (i === gozleyis.length) throw new Error("bağlantı kəsildi");
+        LOG(`  ... bağlantı kəsildi, ${gozleyis[i]} san. gözləyib yenidən cəhd edirəm (${i + 1}/${gozleyis.length})`);
+        await gozle(gozleyis[i] * 1000);
+      }
+      if ((r.status === 401 || r.status === 403) && !this.bearer) { this.bearer = true; continue; }
+      if (r.status === 401 || r.status === 403) throw new SessiyaXetasi("Sessiya bitib. e-taxes səhifəsində yenidən daxil olun.");
+      return r;
+    }
+  }
+  async siyahi(istiqamet, dan, ya) { // dan/ya: ISO
+    const yaG = new Date(ya + "T00:00:00Z"); yaG.setUTCDate(yaG.getUTCDate() + 1);
+    const yaS = yaG.toISOString().slice(0, 10).split("-").reverse().join("-");
+    const govde = {
+      sortBy: "creationDate", sortAsc: true,
+      statuses: ["approved", "onApproval", "updateApproval", "updateRequested", "cancelRequested", "approvedBySystem",
+        "onApprovalEdited", "deactivated", "cancelationRefused", "correctionRefused"],
+      types: ["current", "corrected"],
+      kinds: ["defaultInvoice", "agent", "resale", "recycling", "taxCodex163", "taxCodex177_5", "returnInvoice", "returnByAgent",
+        "returnRecycled", "exportNoteInvoice", "exciseGoodsTransfer", "advanceInvoice"],
+      serialNumber: null, senderTin: null, senderName: null, productName: null, productCode: null, receiverTin: null,
+      receiverName: null, creationDateFrom: `${ddmmyyyy(dan)} 00:00`, creationDateTo: `${yaS} 00:00`,
+      amountFrom: null, amountTo: null, offset: 0, maxCount: 50, actionOwner: null,
+    };
+    const netice = []; let ilk = true;
+    for (;;) {
+      const r = await this.istek("POST", `/api/po/invoice/public/v2/invoice/find.${istiqamet}`, { json: govde });
+      if (r.status === 400 && ilk) { Object.assign(govde, { statuses: null, types: null, kinds: null }); ilk = false; continue; }
+      ilk = false;
+      if (r.status >= 400) throw new Error("siyahı alınmadı (" + r.status + ")");
+      const j = JSON.parse(r.text);
+      const sira = j.invoices || [];
+      netice.push(...sira);
+      if (!j.hasMore || !sira.length) break;
+      govde.offset += sira.length;
+    }
+    return netice;
+  }
+  async json(metod, yol, o) {
+    const r = await this.istek(metod, yol, o);
+    if (r.status >= 400) throw new Error("HTTP " + r.status);
+    return JSON.parse(r.text);
+  }
+  detay(q) { return this.json("GET", `/api/po/invoice/public/v2/invoice/${q.id}`, { params: { sourceSystem: q.sourceSystem || "avis" } }); }
+}
+async function ekAl(cl, yol, o) {
+  try { return await cl.json(o && o.json ? "POST" : "GET", yol, o); }
+  catch (e) { if (e instanceof SessiyaXetasi) throw e; LOG(`  ! ${yol.split("/").pop().slice(0, 40)}: alınmadı (${e.message})`); return null; }
+}
+async function tarixceAl(cl, q) {
+  const sn = q.serialNumber || "", ss = { sourceSystem: q.sourceSystem || "avis" };
+  const base = `/api/po/invoice/public/v1/invoice/${q.id}`;
+  const h = (await ekAl(cl, base + "/history", { params: ss })) || {};
+  const v = (await ekAl(cl, base + "/versions", { params: ss })) || {};
+  const t = (await ekAl(cl, "/api/po/invoice/public/v1/invoice/tree", { json: { serialNumbers: [sn] } })) || {};
+  const e = (await ekAl(cl, `/api/po/invoice/public/v1/invoice/get-related-invoice-tree/${sn}`)) || {};
+  return { sn, events: h.events || [], versions: v.versions || [], tree: t.invoiceTree || [], related: e.parentInvoiceHistories || [] };
+}
+
+// ------------------------------------------------------------------ qaimənin çevrilməsi
+function qaimeTipi(sn, d) {
+  const t = (AYAR.tip_adlari || {})[sn.slice(0, 2)] || TIP_AZ[sn.slice(0, 2)];
+  if (t) return t;
+  for (const k of ["invoiceTypeName", "invoiceType", "documentType", "kind", "typeName"]) {
+    let v = (d || {})[k];
+    if (v && typeof v === "object") v = v.name && typeof v.name === "object" ? v.name.az : v.name;
+    if (v) return String(v);
+  }
+  return sn.slice(0, 2);
+}
+function qaytarmaSebebi(it) {
+  for (const [k, v0] of Object.entries(it)) {
+    let v = v0;
+    if (k.toLowerCase().includes("reason") && v != null && v !== "" && !(Array.isArray(v) && !v.length)) {
+      if (v && typeof v === "object") v = v.name && typeof v.name === "object" ? v.name.az : (v.name || v.value || "");
+      return String(v || "");
+    }
+  }
+  return "";
+}
+function qaimeCevir(d, istiqamet, ek) {
+  const sn = d.serialNumber || "";
+  const mallar = (d.items || []).map((it, i) => {
+    const cost = r2(num(it.cost));
+    const edv = num(it.vat18) > 0 ? r2(cost * 0.18) : 0;
+    const olcu = (((it.unitFromDict || {}).name || {}).az) || it.unit || "";
+    return { sira: i + 1, ad: (it.productName || "").split(/\s+/).filter(Boolean).join(" "),
+      kod: (it.productGroup || {}).code || "", olcu, miqdar: num(it.quantity), qiymet: num(it.pricePerUnit),
+      mebleg: cost, edv, yekun: r2(cost + edv), sebeb: qaytarmaSebebi(it) };
+  });
+  const yekun = r2(num(d.amount)), edv = r2(num(d.vat)), cemi = r2(yekun - edv);
+  const toplam = r2(mallar.reduce((a, m) => a + m.mebleg, 0));
+  if (Math.abs(toplam - cemi) > 0.02) LOG(`  ! ${sn}: mal sətirlərinin cəmi (${toplam}) ilə qaimənin ƏDV-siz məbləği (${cemi}) üst-üstə düşmür`);
+  const s = d.sender || {}, r = d.receiver || {};
+  return { seriya: sn.slice(0, 6), nomre: sn.slice(6), tarix: tarixCevir(d.createdAt),
+    status: STATUS_AZ[d.status] || d.status || "", istiqamet,
+    gonderen_voen: s.tin || "", gonderen_ad: s.name || "", qebul_voen: r.tin || "", qebul_ad: r.name || "",
+    esas: (d.invoiceComment || "").trim(), esas2: (d.invoiceComment2 || "").trim(), mallar, cemi, edv, yekun,
+    novu: NOV_AZ[d.type] || d.type || "", tip: qaimeTipi(sn, d), versiya_no: d.version, ...tarixceXulase(ek) };
+}
+const SN_AC = ["serialNumber", "invoiceSerialNumber", "serial", "number", "invoiceNumber"];
+const TARIX_AC = ["invoiceDate", "createdAt", "date", "operationDate", "modifiedAt", "created", "creationDate"];
+const NOV_AC = ["type", "invoiceType", "relationType", "kind", "operationType", "typeName", "invoiceKind"];
+const STATUS_AC = ["status", "state"];
+function elaqeliAc(...kokler) {
+  const out = [], gorulen = new Set();
+  const ilk = (d, ac) => { for (const a of ac) { const v = d[a]; if (v != null && v !== "" && typeof v !== "object") return v; } return ""; };
+  const yur = (x, ata = "") => {
+    if (Array.isArray(x)) { x.forEach((i) => yur(i, ata)); return; }
+    if (!x || typeof x !== "object") return;
+    const sn = ilk(x, SN_AC);
+    let cariAta = ata;
+    if (sn) {
+      const acar = [sn, String(ilk(x, TARIX_AC)), String(ilk(x, NOV_AC)), ata].join("|");
+      if (!gorulen.has(acar)) {
+        gorulen.add(acar);
+        const tr = Object.entries(x).filter(([k, v]) => typeof v !== "object" && v &&
+          ["tin", "voen", "taxpayer", "sender", "owner", "company"].some((z) => k.toLowerCase().includes(z))).map(([, v]) => String(v));
+        out.push({ teref: tr.join(" / "), nomre: String(sn), tarix: tarixSaat(ilk(x, TARIX_AC)),
+          novu: String(ilk(x, NOV_AC)) || TIP_AZ[String(sn).slice(0, 2)] || "",
+          status: STATUS_AZ[ilk(x, STATUS_AC)] || String(ilk(x, STATUS_AC)), ata, xam: JSON.stringify(x).slice(0, 800) });
+      }
+      cariAta = String(sn);
+    }
+    for (const v of Object.values(x)) if (v && typeof v === "object") yur(v, cariAta);
+  };
+  kokler.forEach((k) => yur(k));
+  return out;
+}
+function tarixceXulase(ek) {
+  const r = { gonderildi: "", tesdiqlendi: "", tesdiq_eden: "", ek, duzelis: "", duzelis_tarixi: "", duzelis_eden: "", elaqeli: "", elaqeli_siyahi: [] };
+  if (!ek) return r;
+  const vs = [...(ek.versions || [])].sort((a, b) => (a.versionNumber || 0) - (b.versionNumber || 0));
+  if (vs.length > 1) {
+    const son = vs[vs.length - 1];
+    r.duzelis = `Bəli (${vs.length} versiya)`; r.duzelis_tarixi = tarixSaat(son.modifiedAt); r.duzelis_eden = son.modifiedBy || "";
+  } else if (vs.length) r.duzelis = "Xeyr";
+  const el = elaqeliAc(ek.tree, ek.related).filter((e) => e.nomre !== (ek.sn || ""));
+  r.elaqeli_siyahi = el;
+  r.elaqeli = el.map((e) => `${e.nomre} (${e.tarix}${e.novu ? ", " + e.novu : ""})`).join("; ");
+  const ev = [...ek.events].sort((a, b) => String(a.modifiedAt || "").localeCompare(String(b.modifiedAt || "")));
+  const gond = ev.filter((x) => x.status === "onApproval");
+  const tes = ev.filter((x) => ["approved", "approvedBySystem"].includes(x.status));
+  if (gond.length) r.gonderildi = tarixSaat(gond[0].modifiedAt);
+  if (tes.length) { const son = tes[tes.length - 1]; r.tesdiqlendi = tarixSaat(son.modifiedAt); r.tesdiq_eden = son.userName || ""; }
+  return r;
+}
+
+// ------------------------------------------------------------------ qaimələrin toplanması
+async function qaimeleriTopla({ istiqamet, dan, ya, voen, nomre, sade }, progress) {
+  const cl = new ETaxes();
+  const yonler = { gelen: [["inbox", "Gələn"]], gonderilen: [["outbox", "Göndərilən"]] }[istiqamet] || [["inbox", "Gələn"], ["outbox", "Göndərilən"]];
+  const qaimeler = [], ugursuz = [];
+  const isle = async (x, ad, i, n) => {
+    const d = await cl.detay(x);
+    const ek = sade ? null : await tarixceAl(cl, x);
+    const q = qaimeCevir(d, ad, ek);
+    const t = iso(q.tarix);
+    if (!(nomre && nomre.length) && t && !araliqda(t, dan, ya)) return;
+    if (voen && voen.length && !voen.some((v) => v === q.gonderen_voen || v === q.qebul_voen)) return;
+    qaimeler.push(q);
+    LOG(`  ${i}/${n} ${q.seriya + q.nomre} ${q.tarix} ${q.status}`);
+    progress && progress(i, n);
+    await gozle(150);
+  };
+  for (const [kod, ad] of yonler) {
+    if (DAYANDI()) break;
+    let sira = await cl.siyahi(kod, dan, ya);
+    if (nomre && nomre.length) sira = sira.filter((x) => nomre.includes(x.serialNumber));
+    else sira = sira.filter((x) => { const t = tarixTap(x); return t === null || araliqda(t, dan, ya); });
+    LOG(`${ad} qaimələr (${ddmmyyyy(dan)} - ${ddmmyyyy(ya)}): ${sira.length} ədəd`);
+    for (let i = 0; i < sira.length; i++) {
+      if (DAYANDI()) { LOG("Dayandırıldı."); break; }
+      try { await isle(sira[i], ad, i + 1, sira.length); }
+      catch (e) {
+        if (e instanceof SessiyaXetasi) throw e;
+        LOG(`! ${sira[i].serialNumber}: götürülmədi (${String(e.message).slice(0, 90)})`);
+        ugursuz.push([sira[i], ad, i + 1, sira.length]);
+      }
+    }
+  }
+  if (ugursuz.length && !DAYANDI()) {
+    LOG(`\n${ugursuz.length} qaimə götürülə bilmədi. 15 saniyə sonra bir də cəhd edirəm...`);
+    await gozle(15000);
+    const qalan = [];
+    for (const [x, ad, i, n] of ugursuz) {
+      try { await isle(x, ad, i, n); } catch (e) {
+        if (e instanceof SessiyaXetasi) throw e;
+        LOG(`! ${x.serialNumber}: yenə götürülmədi`); qalan.push(x.serialNumber);
+      }
+    }
+    if (qalan.length) LOG("\nGötürülməyən qaimələr: " + qalan.join(" ") + "\nBunları nömrə yazaraq təkrar götürə bilərsiniz.");
+  }
+  return qaimeler;
+}

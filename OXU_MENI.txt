@@ -1,0 +1,24 @@
+TTA PROQRAMI 1.5 - İSTİFADƏ
+============================
+
+A) PƏNCƏRƏ PROQRAMI (kompüterdə)
+1) Qovluğu kompüterə kopyalayın (məs. C:\TTA_Proqrami). Python bir dəfə quraşdırılmalıdır (python.org, "Add Python to PATH").
+2) "Pencere_Baslat.bat" faylına iki dəfə klikləyin (qara pəncərəsiz açılır). İlk dəfə lazımi komponentləri özü yükləyir.
+   Köhnə qara menyu istəyirsinizsə: "Başlat.bat".
+3) TTA ilə birlikdə "Qiymət razılaşdırma protokolu" da avtomatik hazırlanır (Protokol_<qaimə>.xlsx / .pdf).
+4) Nəticə "cixis" qovluğunda olur.
+
+B) CHROME ƏLAVƏSİ (e-taxes-ə yenidən daxil olmadan)
+1) Chrome-da adres sətrinə yazın:  chrome://extensions
+2) Sağ yuxarıda "Developer mode" (Tərtibatçı rejimi) düyməsini yandırın.
+3) "Load unpacked" (Paketsiz yüklə) düyməsinə basın və bu qovluqdakı "chrome_eklenti" qovluğunu seçin.
+   DİQQƏT: "chrome_eklenti" qovluğunu sonra silməyin və yerini dəyişməyin.
+4) Brauzerin yuxarı sağındakı yapboz (Extensions) işarəsindən "TTA Köməkçisi"ni sancın.
+5) e-taxes-ə həmişəki kimi daxil olun (səhifə açıq qalsın). Əlavənin ikonuna basın - panel açılır.
+   İki bölmə: 1) Qaimə tərkibi (Excel)  2) TTA + Qiymət razılaşdırma protokolu (ZIP-də Excel; PDF üçün "çap et" düyməsi -> "PDF kimi saxla").
+
+YENİLƏMƏ (admin)
+- Pəncərə proqramı: GitHub repo-da tta_proqrami.py, version.txt, ayarlar.json dəyişəndə hamıda avtomatik yenilənir.
+- Chrome əlavəsi: GitHub repo-da chrome_eklenti/app/ qovluğundakı fayllar və versiya.json-dakı "versiya" dəyişəndə
+  hamının əlavəsi növbəti açılışda özü yenilənir (internet yoxdursa, əvvəlki nüsxə ilə işləyir).
+- ayarlar.json (şəhər, mətn şablonları, protokol başlığı və s.) hər iki proqram üçün ortaqdır.
