@@ -100,6 +100,77 @@
   $("#ac").addEventListener("click", () => KOPRU("ac_etaxes"));
   yoxla(); setInterval(yoxla, 4000);
 
+
+  // ---- istifadəçi icazəsi (icazeler.json). Əvvəl yaddaşdakı qərar tətbiq olunur (gecikmə yoxdur), yoxlama fonda gedir.
+  let kilitli = false;
+  const GUN = 86400000;
+  function kilid(be, mesaj) {
+    kilitli = be;
+    hamisi("nav, .bolme").forEach((e) => { if (be) { e.hidden = true; } });
+    if (!be) { $("nav").hidden = false; const a = $("nav button.aktiv"); if (a) hamisi(".bolme").forEach((s) => (s.hidden = s.id !== "b-" + a.dataset.b)); }
+    $("#icaze").hidden = !mesaj; $("#icaze").textContent = mesaj || "";
+    $("#icaze").className = "xeb" + (be ? "" : " info");
+  }
+  function qerar(j, kod) {
+    const e = (j.istifadeciler || {})[kod];
+    const bu = isoG(new Date());
+    if (e && e.blok) return { ok: false, sebeb: "blok" };
+    if (e) return e.bitir && bu > e.bitir ? { ok: false, sebeb: "bitib", bitir: e.bitir } : { ok: true, bitir: e.bitir || null };
+    if (j.hamisina_ac) return { ok: true, bitir: null };
+    return { ok: false, sebeb: "yox" };
+  }
+  function tetbiq(q, kod) {
+    if (q.ok) {
+      const qalan = q.bitir ? Math.ceil((new Date(q.bitir + "T23:59:59") - Date.now()) / GUN) : null;
+      kilid(false, qalan != null && qalan <= 3 ? `İcazənin bitməsinə ${qalan} gün qalıb (${q.bitir}).` : "");
+    } else {
+      kilid(true, q.sebeb === "bitib" ? `İcazənin müddəti bitib (${q.bitir}). Yeniləmək üçün kodunuzu göndərin: ${kod}`
+        : q.sebeb === "blok" ? `İcazə ləğv edilib. Kodunuz: ${kod}`
+        : `İcazə gözlənilir. İstifadə üçün bu kodu proqramı verən şəxsə göndərin: ${kod}`);
+    }
+  }
+  (async () => {
+    let kod = await KOPRU("get", { key: "istifadeci_kodu" });
+    if (!kod) {
+      const b = new Uint8Array(5); crypto.getRandomValues(b);
+      kod = [...b].map((x) => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[x % 32]).join("") + String(Date.now() % 1000).padStart(3, "0");
+      await KOPRU("set", { key: "istifadeci_kodu", value: kod });
+    }
+    $("#kod").textContent = " · kod " + kod;
+    const kesh = await KOPRU("get", { key: "icaze_kesh" });
+    if (kesh && kesh.q && kesh.kod === kod) { const q = kesh.q; if (!q.ok || !q.bitir || isoG(new Date()) <= q.bitir) tetbiq(q, kod); else tetbiq({ ok: false, sebeb: "bitib", bitir: q.bitir }, kod); }
+    else kilid(true, "İcazə yoxlanılır …");
+    const menbe = window.APP_MENBE;
+    if (!menbe) return;
+    for (let c = 0; c < 3; c++) {
+      let r;
+      try { r = await KOPRU("fetch", { url: menbe + "/icazeler.json?t=" + Date.now() }); } catch (e) { r = null; }
+      if (r && r.status === 200) {
+        let j; try { j = JSON.parse(r.text); } catch (e) { j = null; }
+        if (j) {
+          const q = qerar(j, kod);
+          await KOPRU("set", { key: "icaze_kesh", value: { kod, q } });
+          tetbiq(q, kod);
+          if ((j.admin || []).includes(kod)) { $("#nav-icaze").hidden = false; adminSiyahi(j); }
+          return;
+        }
+      }
+      if (r && r.status === 404) { tetbiq({ ok: true, bitir: null }, kod); return; }  // icazə faylı yoxdur: məhdudiyyət yoxdur
+      await gozle(2500);
+    }
+    if (!kesh) tetbiq({ ok: false, sebeb: "yox" }, kod), kilid(true, "İcazə yoxlanıla bilmədi (internet). Bir az sonra yenidən açın. Kodunuz: " + kod);
+  })();
+  async function adminSiyahi(j) {
+    const adlar = (await KOPRU("get", { key: "icaze_adlar" })) || {};
+    const bu = isoG(new Date());
+    const sat = Object.entries(j.istifadeciler || {}).map(([k, e]) => {
+      const st = e.blok ? "bloklanıb" : e.bitir && bu > e.bitir ? "müddət bitib" : "aktiv";
+      return `<tr><td><b>${_e(k)}</b></td><td><input data-ad="${_e(k)}" value="${_e(adlar[k] || "")}" placeholder="ad (yalnız burada)"></td><td>${_e(e.bitir || "limitsiz")}</td><td>${st}</td></tr>`;
+    }).join("");
+    $("#icaze-siyahi").innerHTML = `<p>Ümumi icazə (hamıya açıq): <b>${j.hamisina_ac ? "bəli" : "xeyr"}</b></p><table class="cedvel"><tr><th>Kod</th><th>Ad</th><th>Bitmə tarixi</th><th>Vəziyyət</th></tr>${sat || '<tr><td colspan="4">Hələ icazə verilən kod yoxdur.</td></tr>'}</table>`;
+    hamisi("#icaze-siyahi [data-ad]").forEach((i) => i.addEventListener("change", async () => { adlar[i.dataset.ad] = i.value; await KOPRU("set", { key: "icaze_adlar", value: adlar }); }));
+  }
+
   // ayarlar (mərkəzi ayarlar.json)
   (async () => {
     const menbe = window.APP_MENBE;
@@ -171,7 +242,7 @@
   const bugun = () => isoG(new Date());
 
   async function isle(ad, is) {
-    if (isleyir) return;
+    if (isleyir || kilitli) return;
     icaze = papkaVar ? await KOPRU("papka_icaze") : false;  // klikdən dərhal sonra: icazə sorğusu istifadəçi hərəkətinə bağlıdır
     mesgul(true); netice([["", "İşləyir …"]]);
     try { await is(); if (xeberler.length) $("#netice").innerHTML += `<p class="x">Diqqət (${xeberler.length}): ${_e(xeberler.slice(0, 3).join(" · "))}${xeberler.length > 3 ? " …" : ""}</p>`; }
