@@ -308,7 +308,17 @@ function qaimeCevir(d, istiqamet, ek) {
     status: STATUS_AZ[d.status] || d.status || "", istiqamet,
     gonderen_voen: s.tin || "", gonderen_ad: s.name || "", qebul_voen: r.tin || "", qebul_ad: r.name || "",
     esas: (d.invoiceComment || "").trim(), esas2: (d.invoiceComment2 || "").trim(), mallar, cemi, edv, yekun,
-    novu: NOV_AZ[d.type] || d.type || "", tip: qaimeTipi(sn, d), versiya_no: d.version, ...tarixceXulase(ek) };
+    novu: NOV_AZ[d.type] || d.type || "", tip: qaimeTipi(sn, d), versiya_no: d.version, ...tarixceXulase(ek),
+    _avansdir: /advance|avans/i.test(String(d.kind || d.invoiceKind || "") + " " + qaimeTipi(sn, d)) };
+}
+// avans qaiməsi <-> normal qaimə bağlantısı (əlaqəli qaimələr siyahısından)
+function avansBagla(q) {
+  const el = q.elaqeli_siyahi || [];
+  const avm = (e) => /advance|avans/i.test((e.novu || "") + " " + (e.xam || ""));
+  const yaz = (e) => `${e.nomre}${e.tarix ? " (" + e.tarix + ")" : ""}`;
+  q.bagli_avans = q._avansdir ? "" : el.filter(avm).map(yaz).join("; ");
+  q.bagli_normal = q._avansdir ? el.filter((e) => !avm(e)).map(yaz).join("; ") : "";
+  return q;
 }
 const SN_AC = ["serialNumber", "invoiceSerialNumber", "serial", "number", "invoiceNumber"];
 const TARIX_AC = ["invoiceDate", "createdAt", "date", "operationDate", "modifiedAt", "created", "creationDate"];
@@ -370,7 +380,7 @@ async function qaimeleriTopla({ istiqamet, dan, ya, voen, nomre, sade }, progres
   const isle = async (x, ad, i, n) => {
     const d = await cl.detay(x);
     const ek = sade ? null : await tarixceAl(cl, x);
-    const q = qaimeCevir(d, ad, ek);
+    const q = avansBagla(qaimeCevir(d, ad, ek));
     const t = iso(q.tarix);
     if (!(nomre && nomre.length) && t && !araliqda(t, dan, ya)) return;
     if (voen && voen.length && !voen.some((v) => v === q.gonderen_voen || v === q.qebul_voen)) return;

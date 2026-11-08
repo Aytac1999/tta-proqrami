@@ -31,7 +31,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph, Table, TableStyle
 
-VERSION = "1.5.6"
+VERSION = "1.5.7"
 ETAX = "https://new.e-taxes.gov.az"
 REYESTR_URL = ETAX + "/api/po/authless/public/v1/authless/findTaxpayer"
 KESH_FAYLI = "direktorlar.json"
@@ -559,7 +559,18 @@ def etaxes_cevir(d, istiqamet, ek=None):
         "mallar": mallar, "cemi": cemi, "edv": edv, "yekun": yekun,
         "novu": NOV_AZ.get(d.get("type"), d.get("type") or ""), "tip": qaime_tipi(sn, d), "versiya_no": d.get("version"),
         **tarixce_xulase(ek),
+        "_avansdir": bool(re.search(r"advance|avans", str(d.get("kind") or d.get("invoiceKind") or "") + " " + str(qaime_tipi(sn, d)), re.I)),
     }
+
+
+def avans_bagla(q):
+    """avans qaiməsi <-> normal qaimə bağlantısı (əlaqəli qaimələr siyahısından)"""
+    el = q.get("elaqeli_siyahi") or []
+    avm = lambda e: bool(re.search(r"advance|avans", (e.get("novu") or "") + " " + (e.get("xam") or ""), re.I))
+    yaz = lambda e: f'{e["nomre"]}' + (f' ({e["tarix"]})' if e.get("tarix") else "")
+    q["bagli_avans"] = "" if q["_avansdir"] else "; ".join(yaz(e) for e in el if avm(e))
+    q["bagli_normal"] = "; ".join(yaz(e) for e in el if not avm(e)) if q["_avansdir"] else ""
+    return q
 
 
 _SN_ACARLAR = ("serialNumber", "invoiceSerialNumber", "serial", "number", "invoiceNumber")
@@ -885,15 +896,15 @@ def terkib_xlsx(yol, qaimeler):
            "Göndərildi", "Təsdiqləndi (son)", "Təsdiq edən", "Düzəliş edilib?", "Düzəliş tarixi", "Düzəliş edən",
            "Əlaqəli qaimələr (geri qaytarma / əsas qaimə)", "Göndərən VÖEN", "Göndərən adı", "Qəbul edən VÖEN",
            "Qəbul edən adı", "Əsas", "Əlavə qeydlər", "Sıra №", "Malın adı", "Malın kodu", "Ölçü vahidi", "Miqdar",
-           "Vahidin qiyməti", "Məbləğ (ƏDV-siz)", "ƏDV", "Yekun məbləğ", "Qaytarma səbəbi", "Ləğv tarixi"]
-    sehife(ws, bas, [20, 12, 12, 24, 40, 18, 9, 17, 17, 28, 14, 17, 28, 50, 14, 34, 14, 34, 40, 24, 7, 50, 14, 10, 10, 12, 14, 12, 14, 18, 26])
+           "Vahidin qiyməti", "Məbləğ (ƏDV-siz)", "ƏDV", "Yekun məbləğ", "Qaytarma səbəbi", "Ləğv tarixi", "Bağlı avans qaiməsi", "Bağlı normal qaimə"]
+    sehife(ws, bas, [20, 12, 12, 24, 40, 18, 9, 17, 17, 28, 14, 17, 28, 50, 14, 34, 14, 34, 40, 24, 7, 50, 14, 10, 10, 12, 14, 12, 14, 18, 26, 30, 30])
     for q in qaimeler:
         for m in q["mallar"]:
             ws.append([q["seriya"] + q["nomre"], q["tarix"], q.get("istiqamet", ""), q.get("status", ""), q.get("tip", ""), q.get("novu", ""),
                        q.get("versiya_no"), q.get("gonderildi", ""), q.get("tesdiqlendi", ""), q.get("tesdiq_eden", ""),
                        q.get("duzelis", ""), q.get("duzelis_tarixi", ""), q.get("duzelis_eden", ""), q.get("elaqeli", ""),
                        q["gonderen_voen"], q["gonderen_ad"], q["qebul_voen"], q["qebul_ad"], q["esas"], q.get("esas2", ""),
-                       m["sira"], m["ad"], m["kod"], m["olcu"], m["miqdar"], m["qiymet"], m["mebleg"], m["edv"], m["yekun"], m.get("sebeb", ""), q.get("legv", "")])
+                       m["sira"], m["ad"], m["kod"], m["olcu"], m["miqdar"], m["qiymet"], m["mebleg"], m["edv"], m["yekun"], m.get("sebeb", ""), q.get("legv", ""), q.get("bagli_avans", ""), q.get("bagli_normal", "")])
     for row in ws.iter_rows(min_row=2):
         for x in row[24:29]:
             x.number_format = "#,##0.00#######" if x.column == 26 else "#,##0.00"
@@ -1016,7 +1027,7 @@ def etaxes_rejimi(a, cixis):
     def isle(x, ad, i, n):
         d = cl.detay(x)
         ek = None if a.sade else tarixce_al(cl, x)
-        q = etaxes_cevir(d, ad, ek)
+        q = avans_bagla(etaxes_cevir(d, ad, ek))
         if not a.nomre and q["tarix"] and not aralidadir(datetime.datetime.strptime(q["tarix"], "%d.%m.%Y").date(), dan, ya):
             return
         if getattr(a, "voen", None) and not ({q["gonderen_voen"], q["qebul_voen"]} & set(a.voen)):
