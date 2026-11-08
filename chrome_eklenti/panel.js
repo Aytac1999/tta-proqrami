@@ -5,6 +5,26 @@ const MENBE_DEF = "https://raw.githubusercontent.com/Aytac1999/tta-proqrami/main
 const qutu = document.getElementById("qutu");
 let gonderildi = false, hazir = false;
 
+// ---- papka seçimi (File System Access API); seçilmiş papka brauzerin yaddaşında (IndexedDB) saxlanır
+function idb() {
+  return new Promise((ok, no) => {
+    const r = indexedDB.open("tta_papka", 1);
+    r.onupgradeneeded = () => r.result.createObjectStore("h");
+    r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error);
+  });
+}
+async function idbGet(k) { const d = await idb(); return new Promise((ok) => { const q = d.transaction("h").objectStore("h").get(k); q.onsuccess = () => ok(q.result); q.onerror = () => ok(null); }); }
+async function idbSet(k, v) { const d = await idb(); return new Promise((ok) => { const t = d.transaction("h", "readwrite"); if (v === null) t.objectStore("h").delete(k); else t.objectStore("h").put(v, k); t.oncomplete = () => ok(true); }); }
+async function papkaIcaze(sor) {
+  const h = await idbGet("papka");
+  if (!h) return null;
+  try {
+    let p = await h.queryPermission({ mode: "readwrite" });
+    if (p !== "granted" && sor) p = await h.requestPermission({ mode: "readwrite" });
+    return p === "granted" ? h : null;
+  } catch (e) { return null; }
+}
+
 async function st(k) { return (await chrome.storage.local.get(k))[k]; }
 async function tokenAl() {
   const tabs = await chrome.tabs.query({ url: ETAX + "/*" });
@@ -96,6 +116,22 @@ async function isle(m) {
     a.href = URL.createObjectURL(b); a.download = m.ad; document.body.appendChild(a); a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
     return true;
+  }
+  if (m.t === "papka_ad") { const h = await idbGet("papka"); return h ? h.name : null; }
+  if (m.t === "papka_sec") {
+    try { const h = await window.showDirectoryPicker({ mode: "readwrite" }); await idbSet("papka", h); return { ad: h.name }; }
+    catch (e) { return { xeta: e && e.name === "AbortError" ? "ləğv edildi" : String(e && e.message || e) }; }
+  }
+  if (m.t === "papka_sil") { await idbSet("papka", null); return true; }
+  if (m.t === "papka_icaze") { return !!(await papkaIcaze(true)); }
+  if (m.t === "papka_yaz") {
+    const h = await papkaIcaze(false);
+    if (!h) return { xeta: "papkaya yazma icazəsi yoxdur" };
+    for (const f of m.fayllar) {
+      const fh = await h.getFileHandle(f.ad, { create: true });
+      const w = await fh.createWritable(); await w.write(f.bytes); await w.close();
+    }
+    return { ok: m.fayllar.length, ad: h.name };
   }
   if (m.t === "ac_etaxes") { await chrome.tabs.create({ url: ETAX + "/eportal/invoice" }); return true; }
   if (m.t === "chap") { qutu.contentWindow.focus(); return true; }

@@ -58,54 +58,102 @@
     try { if (r.status === 200) AYAR = { ...AYAR_DEF, ...JSON.parse(r.text) }; } catch (e) {}
   })();
 
+  // ---- papka
+  let papkaVar = false;
+  async function papkaGoster() {
+    const ad = await KOPRU("papka_ad");
+    papkaVar = !!ad;
+    $("#papka-ad").textContent = ad ? "papka «" + ad + "»" : "Yükləmələr qovluğu";
+    $("#papka-sil").hidden = !ad;
+  }
+  $("#papka-sec").addEventListener("click", async () => {
+    const r = await KOPRU("papka_sec");
+    if (r && r.xeta) { if (r.xeta !== "ləğv edildi") netice([["x", "Papka seçilmədi: " + r.xeta + ". Fayllar Yükləmələr qovluğuna düşəcək."]]); return; }
+    papkaGoster();
+  });
+  $("#papka-sil").addEventListener("click", async () => { await KOPRU("papka_sil"); papkaGoster(); });
+  papkaGoster();
+
+  // ---- nəticə (yazı kimi)
+  const _e = (t) => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  function netice(satirlar) { $("#netice").innerHTML = satirlar.map(([c, t]) => `<p class="${c || ""}">${_e(t)}</p>`).join(""); }
+  const tarixAz = (i) => i.split("-").reverse().join(".");
+
   function mesgul(b) {
     isleyir = b; dayan = false;
     hamisi(".esas").forEach((x) => (x.disabled = b));
-    $("#dayan").hidden = !b;
-    if (b) { jurnal.textContent = ""; $("#dolu").style.width = "0"; }
+    $("#dayan").hidden = !b; $("#zolaq").hidden = !b;
+    if (b) { jurnal.textContent = ""; $("#dolu").style.width = "0"; $("#chap-qutu").hidden = true; }
   }
   $("#dayan").addEventListener("click", () => { dayan = true; LOG("Dayandırılır …"); });
-  const yukle = (ad, bytes, mime) => KOPRU("yukle", { ad, bytes, mime });
+
+  // fayllar: [{ad, data(Uint8Array), mime}] -> papka (varsa) və ya Yükləmələr; hara yazıldığını qaytarır
+  async function saxla(fayllar, zipAdi) {
+    if (papkaVar && icaze) {
+      const r = await KOPRU("papka_yaz", { fayllar: fayllar.map((f) => ({ ad: f.ad, bytes: f.data.buffer.slice(f.data.byteOffset, f.data.byteOffset + f.data.byteLength) })) });
+      if (r && r.ok) return `papka «${r.ad}» (${r.ok} fayl)`;
+      LOG("Papkaya yazılmadı: " + ((r && r.xeta) || "naməlum xəta") + ". Yükləmələrə düşür.");
+    }
+    if (zipAdi && fayllar.length > 1) {
+      await KOPRU("yukle", { ad: zipAdi, bytes: await zipYarat(fayllar.map((f) => ({ ad: f.ad, data: f.data })), false), mime: "application/zip" });
+      return `Yükləmələr qovluğu (${zipAdi}, içində ${fayllar.length} fayl)`;
+    }
+    for (const f of fayllar) await KOPRU("yukle", { ad: f.ad, bytes: f.data, mime: f.mime });
+    return "Yükləmələr qovluğu";
+  }
+  let icaze = false;
+  const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
   const bugun = () => isoG(new Date());
 
   async function isle(ad, is) {
     if (isleyir) return;
-    mesgul(true);
+    icaze = papkaVar ? await KOPRU("papka_icaze") : false;  // klikdən dərhal sonra: icazə sorğusu istifadəçi hərəkətinə bağlıdır
+    mesgul(true); netice([["", "İşləyir …"]]);
     try { await is(); }
-    catch (e) { LOG("! " + (e instanceof SessiyaXetasi ? e.message : "Xəta: " + (e && e.message || e))); }
+    catch (e) { netice([["x", e instanceof SessiyaXetasi ? e.message : "Xəta: " + (e && e.message || e)]]); }
     mesgul(false);
   }
+  const say = (q, k) => q.filter((x) => x.istiqamet === k).length;
+  const aralikYazi = (o) => `${tarixAz(o.dan)} – ${tarixAz(o.ya)}`;
 
   $("#bas-terkib").addEventListener("click", () => isle("terkib", async () => {
     const o = oxu($("#b-terkib"));
-    if (!o.dan || !o.ya) return LOG("Tarixləri seçin.");
-    const q = await qaimeleriTopla({ ...o, sade: !o.f("tarixce") }, progress);
-    if (!q.length) return LOG("Heç bir qaimə işlənmədi.");
+    if (!o.dan || !o.ya) return netice([["x", "Tarixləri seçin."]]);
+    const q = await qaimeleriTopla({ ...o, sade: !o.f("tarixce") }, (i, n) => { progress(i, n); netice([["", `İşləyir … ${i}/${n}`]]); });
+    if (!q.length) return netice([["", `${aralikYazi(o)} aralığında uyğun qaimə tapılmadı.`]]);
     const bytes = await xlsxYarat(terkibSehifeleri(q));
-    await yukle(`qaime_terkibi_${bugun()}.xlsx`, bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    LOG(`Hazırdır (${q.length} qaimə). Fayl Yükləmələr qovluğuna düşdü.`);
+    const yer = await saxla([{ ad: `qaime_terkibi_${bugun()}.xlsx`, data: bytes, mime: XLSX_MIME }]);
+    const sətir = q.reduce((a, x) => a + x.mallar.length, 0);
+    netice([["", `${aralikYazi(o)} aralığında ${q.length} qaimə tapıldı (gələn: ${say(q, "Gələn")}, göndərilən: ${say(q, "Göndərilən")}).`],
+      ["", `Qaimə tərkibi Excel-i hazırlandı: ${sətir} mal sətri.`], ["ok", `Yerləşdirildi: ${yer}.`]]);
   }));
 
   $("#bas-tta").addEventListener("click", () => isle("tta", async () => {
     const o = oxu($("#b-tta"));
-    if (!o.dan || !o.ya) return LOG("Tarixləri seçin.");
+    if (!o.dan || !o.ya) return netice([["x", "Tarixləri seçin."]]);
     const tta = o.f("tta"), prot = o.f("protokol");
-    if (!tta && !prot) return LOG("TTA və ya protokoldan birini seçin.");
-    const q = await qaimeleriTopla({ ...o, sade: true }, progress);
-    if (!q.length) return LOG("Heç bir qaimə işlənmədi.");
-    LOG("\nTərəflər və direktorlar reyestrdən yoxlanılır …");
-    const fayllar = []; son = { tta: [], protokol: [] };
+    if (!tta && !prot) return netice([["x", "TTA və ya protokoldan birini seçin."]]);
+    const q = await qaimeleriTopla({ ...o, sade: true }, (i, n) => { progress(i, n); netice([["", `İşləyir … ${i}/${n}`]]); });
+    if (!q.length) return netice([["", `${aralikYazi(o)} aralığında uyğun qaimə tapılmadı.`]]);
+    netice([["", "Direktorlar reyestrdən yoxlanılır …"]]);
+    const fayllar = []; son = { tta: [], protokol: [] }; const direktorsuz = [];
     for (const x of q) {
       const sat = await teref(x.gonderen_voen, x.gonderen_ad), alc = await teref(x.qebul_voen, x.qebul_ad);
       const no = x.seriya + x.nomre;
-      if (tta) { fayllar.push({ ad: `TTA_${no}.xlsx`, data: await xlsxYarat([aktSehifesi(x, sat, alc, false)]) }); son.tta.push([x, sat, alc]); }
-      if (prot) { fayllar.push({ ad: `Protokol_${no}.xlsx`, data: await xlsxYarat([aktSehifesi(x, sat, alc, true)]) }); son.protokol.push([x, sat, alc]); }
+      if (!sat.direktor || !alc.direktor) direktorsuz.push(no);
+      if (tta) { fayllar.push({ ad: `TTA_${no}.xlsx`, data: await xlsxYarat([aktSehifesi(x, sat, alc, false)]), mime: XLSX_MIME }); son.tta.push([x, sat, alc]); }
+      if (prot) { fayllar.push({ ad: `Protokol_${no}.xlsx`, data: await xlsxYarat([aktSehifesi(x, sat, alc, true)]), mime: XLSX_MIME }); son.protokol.push([x, sat, alc]); }
       LOG(`+ ${no}: ${alc.ad}  yekun ${fmt(x.yekun)}  direktor: ${alc.direktor || "(tapılmadı)"}`);
     }
-    await yukle(`TTA_Protokol_${bugun()}.zip`, await zipYarat(fayllar, false), "application/zip");
+    const yer = await saxla(fayllar, `TTA_Protokol_${bugun()}.zip`);
     $("#chap-qutu").hidden = false;
-    $("#chap-tta").disabled = !son.tta.length; $("#chap-prot").disabled = !son.protokol.length;
-    LOG(`Hazırdır (${q.length} qaimə). ZIP Yükləmələr qovluğuna düşdü. PDF üçün aşağıdakı düymələrdən istifadə edin.`);
+    $("#chap-tta").hidden = !son.tta.length; $("#chap-prot").hidden = !son.protokol.length;
+    const s = [["", `${aralikYazi(o)} aralığında ${q.length} qaimə tapıldı (gələn: ${say(q, "Gələn")}, göndərilən: ${say(q, "Göndərilən")}).`],
+      ["", `Hazırlandı: ${son.tta.length ? son.tta.length + " TTA" : ""}${son.tta.length && son.protokol.length ? ", " : ""}${son.protokol.length ? son.protokol.length + " protokol" : ""} (Excel).`],
+      ["ok", `Yerləşdirildi: ${yer}.`]];
+    if (direktorsuz.length) s.push(["x", `Direktoru tapılmayan ${direktorsuz.length} qaimə var (imza xanası boş qalıb): ${direktorsuz.slice(0, 5).join(", ")}${direktorsuz.length > 5 ? " …" : ""}`]);
+    s.push(["", "PDF lazımdırsa, aşağıdakı çap düymələrindən istifadə edin."]);
+    netice(s);
   }));
 
   function chap(tip) {

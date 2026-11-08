@@ -17,6 +17,8 @@ B) CHROME ƏLAVƏSİ (e-taxes-ə yenidən daxil olmadan)
 5) e-taxes-ə həmişəki kimi daxil olun (səhifə açıq qalsın). Əlavənin ikonuna basın - panel e-taxes səhifəsinin YANINDA (yan paneldə) açılır, ayrıca tab açılmır. Panelin eni sürüşdürülərək dəyişdirilə bilər.
    İki bölmə: 1) Qaimə tərkibi (Excel)  2) TTA + Qiymət razılaşdırma protokolu (ZIP-də Excel; PDF üçün "çap et" düyməsi -> "PDF kimi saxla").
 
+Papka seçimi: panelin yuxarısında "Papka seç…" düyməsi ilə faylların yazılacağı papkanı göstərirsiniz (bir dəfə). Seçilməsə, fayllar Yükləmələr qovluğuna düşür.
+
 YENİLƏMƏ (admin)
 - Pəncərə proqramı: GitHub repo-da tta_proqrami.py, version.txt, ayarlar.json dəyişəndə hamıda avtomatik yenilənir.
 - Chrome əlavəsi: GitHub repo-da chrome_eklenti/app/ qovluğundakı fayllar və versiya.json-dakı "versiya" dəyişəndə

@@ -1,38 +1,38 @@
 <div id="ui">
   <header>
     <img id="logo" src="" alt="">
-    <div><h1>TTA Köməkçisi</h1></div>
-    <div class="sag"><span id="giris" class="nisan">yoxlanılır…</span><span id="ver" class="alt"></span></div>
+    <h1>TTA Köməkçisi</h1>
+    <div class="sag"><span id="giris" class="nisan">…</span><span id="ver" class="alt"></span></div>
   </header>
-  <div id="xeberdarliq" class="xeb" hidden>
-    e-taxes-ə daxil olunmayıb. Səhifədə Asan İmza ilə daxil olun.
-    <button id="ac">e-taxes-i aç</button>
-  </div>
+  <div id="xeberdarliq" class="xeb" hidden>e-taxes-ə daxil olunmayıb. Səhifədə Asan İmza ilə daxil olun. <button id="ac">e-taxes-i aç</button></div>
+  <div class="papka">Fayllar: <b id="papka-ad">Yükləmələr qovluğu</b>
+    <button id="papka-sec">Papka seç…</button><button id="papka-sil" hidden title="Standarta qayıt">×</button></div>
   <nav><button data-b="terkib" class="aktiv">1. Tərkib (Excel)</button><button data-b="tta">2. TTA + Protokol</button></nav>
 
   <section id="b-terkib" class="bolme">
-    <div class="sira"><label>İstiqamət<select data-f="ist"><option value="hamisi">Gələn + Göndərilən</option><option value="gelen">Yalnız gələn</option><option value="gonderilen">Yalnız göndərilən</option></select></label>
-      <label>Başlanğıc tarix<input type="date" data-f="dan"></label><label>Son tarix<input type="date" data-f="ya"></label></div>
-    <div class="sira kicik"><button class="lnk" data-ar="bu-ay">Bu ay</button><button class="lnk" data-ar="kecen-ay">Keçən ay</button><button class="lnk" data-ar="bu-il">Bu il</button></div>
+    <label>İstiqamət<select data-f="ist"><option value="hamisi">Gələn + Göndərilən</option><option value="gelen">Yalnız gələn</option><option value="gonderilen">Yalnız göndərilən</option></select></label>
+    <div class="ikili"><label>Başlanğıc tarix<input type="date" data-f="dan"></label><label>Son tarix<input type="date" data-f="ya"></label></div>
+    <div class="lnkler"><button class="lnk" data-ar="bu-ay">Bu ay</button><button class="lnk" data-ar="kecen-ay">Keçən ay</button><button class="lnk" data-ar="bu-il">Bu il</button></div>
     <label>VÖEN (boşluqla ayırın, boş = hamısı)<input type="text" data-f="voen" placeholder="məs. 1308922521 8504554871"></label>
-    <label>Qaimə nömrələri (boş = seçilmiş şərtlərə uyğun hamısı)<input type="text" data-f="nomre" placeholder="məs. MT261110373847"></label>
-    <label class="cek"><input type="checkbox" data-f="tarixce" checked> Tarixçə, versiya və əlaqəli qaimələr də götürülsün (daha yavaşdır)</label>
+    <label>Qaimə nömrələri (boş = hamısı)<input type="text" data-f="nomre" placeholder="məs. MT261110373847"></label>
+    <label class="cek"><input type="checkbox" data-f="tarixce" checked> Tarixçə, versiya, əlaqəli qaimələr də (yavaş)</label>
     <button class="esas" id="bas-terkib">Excel hazırla</button>
   </section>
 
   <section id="b-tta" class="bolme" hidden>
-    <div class="sira"><label>İstiqamət<select data-f="ist"><option value="hamisi">Gələn + Göndərilən</option><option value="gelen">Yalnız gələn</option><option value="gonderilen">Yalnız göndərilən</option></select></label>
-      <label>Başlanğıc tarix<input type="date" data-f="dan"></label><label>Son tarix<input type="date" data-f="ya"></label></div>
-    <div class="sira kicik"><button class="lnk" data-ar="bu-ay">Bu ay</button><button class="lnk" data-ar="kecen-ay">Keçən ay</button><button class="lnk" data-ar="bu-il">Bu il</button></div>
+    <label>İstiqamət<select data-f="ist"><option value="hamisi">Gələn + Göndərilən</option><option value="gelen">Yalnız gələn</option><option value="gonderilen">Yalnız göndərilən</option></select></label>
+    <div class="ikili"><label>Başlanğıc tarix<input type="date" data-f="dan"></label><label>Son tarix<input type="date" data-f="ya"></label></div>
+    <div class="lnkler"><button class="lnk" data-ar="bu-ay">Bu ay</button><button class="lnk" data-ar="kecen-ay">Keçən ay</button><button class="lnk" data-ar="bu-il">Bu il</button></div>
     <label>VÖEN (boşluqla ayırın, boş = hamısı)<input type="text" data-f="voen" placeholder="məs. 1308922521 8504554871"></label>
-    <label>Qaimə nömrələri (boş = seçilmiş şərtlərə uyğun hamısı)<input type="text" data-f="nomre" placeholder="məs. MT261110373847"></label>
-    <div class="sira"><label class="cek"><input type="checkbox" data-f="tta" checked> TTA</label><label class="cek"><input type="checkbox" data-f="protokol" checked> Qiymət razılaşdırma protokolu</label></div>
-    <button class="esas" id="bas-tta">Hazırla (Excel – ZIP)</button>
-    <div id="chap-qutu" hidden class="sira"><span>PDF üçün:</span>
-      <button id="chap-tta">TTA-ları çap et / PDF</button><button id="chap-prot">Protokolları çap et / PDF</button></div>
+    <label>Qaimə nömrələri (boş = hamısı)<input type="text" data-f="nomre" placeholder="məs. MT261110373847"></label>
+    <div class="cekler"><label class="cek"><input type="checkbox" data-f="tta" checked> TTA</label><label class="cek"><input type="checkbox" data-f="protokol" checked> Qiymət razılaşdırma protokolu</label></div>
+    <button class="esas" id="bas-tta">Hazırla (Excel)</button>
+    <div id="chap-qutu" hidden class="chap">PDF üçün: <button id="chap-tta">TTA çap et</button><button id="chap-prot">Protokol çap et</button></div>
   </section>
 
-  <div class="sira"><div id="zolaq"><div id="dolu"></div></div><button id="dayan" hidden>Dayandır</button></div>
-  <pre id="jurnal"></pre>
+  <div id="zolaq" hidden><div id="dolu"></div></div>
+  <button id="dayan" hidden>Dayandır</button>
+  <div id="netice"></div>
+  <details><summary>Ətraflı jurnal</summary><pre id="jurnal"></pre></details>
 </div>
 <div id="cap"></div>
