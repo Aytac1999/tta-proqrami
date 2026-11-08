@@ -31,7 +31,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph, Table, TableStyle
 
-VERSION = "1.5.9"
+VERSION = "1.5.10"
 ETAX = "https://new.e-taxes.gov.az"
 REYESTR_URL = ETAX + "/api/po/authless/public/v1/authless/findTaxpayer"
 KESH_FAYLI = "direktorlar.json"
@@ -950,12 +950,21 @@ def senedler(sened):
     return {x.strip() for x in sened.split(",") if x.strip() in ("tta", "protokol", "hesab")}
 
 
+def fayl_adi(q, sat, alc):
+    """<qaimə №>_<qarşı tərəfin adı>_<qaimə tarixi> (qarşı tərəf: gələndə göndərən, göndəriləndə qəbul edən)"""
+    teref_ = alc if q.get("istiqamet") == "Göndərilən" else sat
+    ad = re.sub(r'[\\/:*?"<>|\r\n]+', " ", str(teref_.get("ad") or "")).strip(" .")
+    ad = re.sub(r"\s+", " ", ad)[:45].strip(" .")
+    tarix = str(q.get("tarix") or "")[:10]
+    return "_".join(x for x in (q["seriya"] + q["nomre"], ad, tarix) if x)
+
+
 def tta_yaz(q, cixis, oflayn, sened="ikisi"):
     """sened: 'ikisi' (TTA + protokol), 'hamisi', yaxud 'tta' / 'protokol' / 'hesab' (vergüllə birləşdirmək olar)"""
     sec = senedler(sened)
     sat = teref(q["gonderen_voen"], q["gonderen_ad"], oflayn)
     alc = teref(q["qebul_voen"], q["qebul_ad"], oflayn)
-    ad = q["seriya"] + q["nomre"]
+    ad = fayl_adi(q, sat, alc)
     if "tta" in sec:
         tta_xlsx(os.path.join(cixis, f"TTA_{ad}.xlsx"), q, sat, alc)
         tta_pdf(os.path.join(cixis, f"TTA_{ad}.pdf"), q, sat, alc)

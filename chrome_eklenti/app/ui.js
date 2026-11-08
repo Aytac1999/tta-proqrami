@@ -20,6 +20,12 @@
   }));
 
   // tarix: əllə yazılır, nöqtələr avtomatik düşür (08 -> 08. ; 10 -> 08.10. ; 2026 -> 08.10.2026)
+  // fayl adı: <qaimə №>_<qarşı tərəfin adı>_<tarix>  (gələndə göndərən, göndəriləndə qəbul edən)
+  function faylAdi(x, sat, alc) {
+    const t = x.istiqamet === "Göndərilən" ? alc : sat;
+    const ad = String((t && t.ad) || "").replace(/[\\/:*?"<>|\r\n]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 45).replace(/^[ .]+|[ .]+$/g, "");
+    return [x.seriya + x.nomre, ad, String(x.tarix || "").slice(0, 10)].filter(Boolean).join("_");
+  }
   function tarixMaska(xam, silme) {
     const hisse = []; let cari = "";
     for (const ch of xam) {
@@ -195,13 +201,13 @@
     const fayllar = []; son = { tta: [], protokol: [], hesab: [] }; const direktorsuz = [], rekvsiz = [];
     for (const x of q) {
       const sat = await teref(x.gonderen_voen, x.gonderen_ad), alc = await teref(x.qebul_voen, x.qebul_ad);
-      const no = x.seriya + x.nomre;
-      if (!sat.direktor || !alc.direktor) direktorsuz.push(no);
+      const no = faylAdi(x, sat, alc);
+      if (!sat.direktor || !alc.direktor) direktorsuz.push(x.seriya + x.nomre);
       if (tta) { fayllar.push({ ad: `TTA_${no}.xlsx`, data: await xlsxYarat([aktSehifesi(x, sat, alc, false)]), mime: XLSX_MIME }); son.tta.push([x, sat, alc]); }
       if (prot) { fayllar.push({ ad: `Protokol_${no}.xlsx`, data: await xlsxYarat([aktSehifesi(x, sat, alc, true)]), mime: XLSX_MIME }); son.protokol.push([x, sat, alc]); }
       if (hes) {
         const rk = rekvizitSec(rekvDict, sat.voen);
-        if (!rk) rekvsiz.push(no);
+        if (!rk) rekvsiz.push(x.seriya + x.nomre);
         fayllar.push({ ad: `Hesab_faktura_${no}.xlsx`, data: await xlsxYarat([aktSehifesi(x, sat, alc, "hesab", rk)]), mime: XLSX_MIME });
         son.hesab.push([x, sat, alc, rk]);
       }
