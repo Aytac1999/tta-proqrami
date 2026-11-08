@@ -75,9 +75,13 @@
     $("[data-f=dan]", bolme).value = isoG(a); $("[data-f=ya]", bolme).value = isoG(b);
   }
   hamisi(".bolme").forEach((s) => {
+    if (!$("[data-f=dan]", s)) return;  // ƏDV bölməsində gün tarixi yoxdur (ay seçilir)
     araliq(s, "bu-ay");
     hamisi("[data-ar]", s).forEach((b) => b.addEventListener("click", () => araliq(s, b.dataset.ar)));
   });
+  { const b = new Date(), ay = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const kecen = new Date(b.getFullYear(), b.getMonth() - 1, 1);
+    $("[data-f=edvdan]").value = `${b.getFullYear()}-01`; $("[data-f=edvya]").value = ay(kecen); }
   const oxu = (s) => {
     const f = (k) => $(`[data-f=${k}]`, s);
     return { istiqamet: f("ist").value, dan: f("dan").value, ya: f("ya").value,
