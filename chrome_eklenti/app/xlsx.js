@@ -166,19 +166,17 @@ function aktSehifesi(q, sat, alc, tip, rekv) {
 
 // ƏDV əvəzləşməsi: qaimə tərkibi + bəyannamə ayı / növü / ödənilmiş məbləğ / əvəzləşdirilən ƏDV; idxal (YGB); bəyannamələr
 function edvSehifeleri(setirler, ygb, bey) {
-  const sh = terkibSehifeleri(setirler)[0];
   const bs = (a) => a.map((v) => ({ v, s: S.TBASLIQ }));
-  sh.ad = "ƏDV əvəzləşməsi";
-  sh.rows.forEach((r) => r.splice(28, 4));  // Qaytarma səbəbi, Ləğv tarixi, Avans qaiməsi, Təqdimedilmə qaiməsi bu cədvəldə lazım deyil
-  sh.eni.splice(28, 4);
-  sh.rows.forEach((r) => r.splice(3, 10));  // Status ... Əlaqəli qaimələr (3-12-ci sütunlar) da çıxarılır
-  sh.eni.splice(3, 10);
-  sh.rows[0].push(...bs(["Bəyannamə ayı", "Bəyannamənin növü", "Ödənilmiş məbləğ", "Əvəzləşdirilən ƏDV"]));
-  let ri = 1;
-  for (const q of setirler) q.mallar.forEach((m, i) => {
-    sh.rows[ri++].push(i ? "" : q._bey, i ? "" : q._beyNov, i ? "" : { v: q._odenilmis, s: S.TPUL }, i ? "" : { v: q._evez, s: S.TPUL });
-  });
-  sh.eni.push(18, 18, 16, 16); sh.suzgec = sh.rows[0].length;
+  const top = (q, f) => Math.round(q.mallar.reduce((t, m) => t + (Number(m[f]) || 0), 0) * 100) / 100;
+  const bas = ["Qaimə (seriya+nömrə)", "Qaimə tarixi", "İstiqamət", "Göndərən VÖEN", "Göndərən adı", "Qəbul edən VÖEN", "Qəbul edən adı", "Əsas", "Əlavə qeydlər",
+    "Məbləğ (ƏDV-siz)", "ƏDV", "Yekun məbləğ", "Bəyannamə ayı", "Bəyannamənin növü", "Ödənilmiş məbləğ", "Əvəzləşdirilən ƏDV"];
+  const rows = [bs(bas)];
+  for (const q of setirler) {  // hər bəyannamə sətri üçün bir sətir (mal sətirləri yoxdur)
+    rows.push([q.seriya + q.nomre, q.tarix, q.istiqamet || "", q.gonderen_voen || "", q.gonderen_ad || "", q.qebul_voen || "", q.qebul_ad || "", q.esas || "", q.esas2 || "",
+      { v: q.cemi != null ? q.cemi : top(q, "mebleg"), s: S.TPUL }, { v: q.edv != null ? q.edv : top(q, "edv"), s: S.TPUL }, { v: q.yekun != null ? q.yekun : top(q, "yekun"), s: S.TPUL },
+      q._bey, q._beyNov, { v: q._odenilmis, s: S.TPUL }, { v: q._evez, s: S.TPUL }]);
+  }
+  const sh = { ad: "ƏDV əvəzləşməsi", rows, eni: [20, 12, 12, 14, 34, 14, 34, 40, 24, 14, 12, 14, 18, 18, 16, 16], dondur: true, suzgec: bas.length };
   const yg = [bs(["Bəyannamə ayı", "Bəyannamənin növü", "YGB №", "YGB tarixi", "ƏDV-siz dəyər", "ƏDV məbləği"])];
   for (const y of ygb) yg.push([y.bey, y.nov, y.no, y.tarix, { v: y.deyer, s: S.TPUL }, { v: y.edv, s: S.TPUL }]);
   const bl = [bs(["Dövr", "Bəyannamənin növü", "Sənəd nömrəsi", "Statusu", "Qeydiyyat tarixi", "Əvəzləşdirmə qaimələrinin sayı", "Ödənilmiş ƏDV cəmi", "İdxal ƏDV cəmi"])];
