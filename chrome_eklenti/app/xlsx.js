@@ -169,6 +169,8 @@ function edvSehifeleri(setirler, ygb, bey) {
   const sh = terkibSehifeleri(setirler)[0];
   const bs = (a) => a.map((v) => ({ v, s: S.TBASLIQ }));
   sh.ad = "ƏDV əvəzləşməsi";
+  sh.rows.forEach((r) => r.splice(28, 4));  // Qaytarma səbəbi, Ləğv tarixi, Avans qaiməsi, Təqdimedilmə qaiməsi bu cədvəldə lazım deyil
+  sh.eni.splice(28, 4);
   sh.rows[0].push(...bs(["Bəyannamə ayı", "Bəyannamənin növü", "Ödənilmiş məbləğ", "Əvəzləşdirilən ƏDV"]));
   let ri = 1;
   for (const q of setirler) q.mallar.forEach((m, i) => {
