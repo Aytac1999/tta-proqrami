@@ -111,8 +111,8 @@
     $("#icaze").hidden = !mesaj; $("#icaze").textContent = mesaj || "";
     $("#icaze").className = "xeb" + (be ? "" : " info");
   }
-  function qerar(j, kod) {
-    const e = (j.istifadeciler || {})[kod];
+  function qerar(j, kod, kodlar) {
+    const e = (kodlar || [kod]).map((k) => (j.istifadeciler || {})[k]).find(Boolean);
     const bu = isoG(new Date());
     if (e && e.blok) return { ok: false, sebeb: "blok" };
     if (e) return e.bitir && bu > e.bitir ? { ok: false, sebeb: "bitib", bitir: e.bitir } : { ok: true, bitir: e.bitir || null };
@@ -130,12 +130,28 @@
     }
   }
   (async () => {
-    let kod = await KOPRU("get", { key: "istifadeci_kodu" });
-    if (!kod) {
+    // köhnə (təsadüfi) kod: yalnız əvvəlki icazələr işləsin deyə saxlanır
+    let kohne = await KOPRU("get", { key: "istifadeci_kodu" });
+    if (!kohne || typeof kohne !== "string") {
       const b = new Uint8Array(5); crypto.getRandomValues(b);
-      kod = [...b].map((x) => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[x % 32]).join("") + String(Date.now() % 1000).padStart(3, "0");
-      await KOPRU("set", { key: "istifadeci_kodu", value: kod });
+      kohne = [...b].map((x) => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[x % 32]).join("") + String(Date.now() % 1000).padStart(3, "0");
+      await KOPRU("set", { key: "istifadeci_kodu", value: kohne });
     }
+    // sabit kod: e-taxes istifadəçisinin (FİN) hash-indən. Extension silinib yenidən qurulsa da, başqa kompüterdə də dəyişmir.
+    let kod = await KOPRU("get", { key: "sabit_kod" });
+    if (!kod || typeof kod !== "string") {
+      try {
+        const r = await KOPRU("fetch", { url: "https://new.e-taxes.gov.az/api/po/profile/public/v2/profile", auth: true });
+        const pin = r && r.status === 200 ? (JSON.parse(r.text).profile || {}).pin : null;
+        if (pin) {
+          const h = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode("TTA|" + String(pin).trim().toUpperCase())));
+          kod = [...h.slice(0, 8)].map((x) => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[x % 32]).join("");
+          await KOPRU("set", { key: "sabit_kod", value: kod });
+        }
+      } catch (e) { /* e-taxes-ə daxil olunmayıb: köhnə kod işlədilir */ }
+    }
+    if (!kod) kod = kohne;
+    const kodlar = [...new Set([kod, kohne])];
     $("#kod").textContent = " · kod " + kod;
     const kesh = await KOPRU("get", { key: "icaze_kesh" });
     if (kesh && kesh.q && kesh.kod === kod) { const q = kesh.q; if (!q.ok || !q.bitir || isoG(new Date()) <= q.bitir) tetbiq(q, kod); else tetbiq({ ok: false, sebeb: "bitib", bitir: q.bitir }, kod); }
@@ -148,10 +164,10 @@
       if (r && r.status === 200) {
         let j; try { j = JSON.parse(r.text); } catch (e) { j = null; }
         if (j) {
-          const q = qerar(j, kod);
+          const q = qerar(j, kod, kodlar);
           await KOPRU("set", { key: "icaze_kesh", value: { kod, q } });
           tetbiq(q, kod);
-          if ((j.admin || []).includes(kod)) { $("#nav-icaze").hidden = false; adminSiyahi(j); }
+          if (kodlar.some((k) => (j.admin || []).includes(k))) { $("#nav-icaze").hidden = false; adminSiyahi(j); }
           return;
         }
       }
