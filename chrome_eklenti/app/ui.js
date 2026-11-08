@@ -60,15 +60,20 @@
 
   // ---- papka
   let papkaVar = false;
+  let qabiqKohne = false;
   async function papkaGoster() {
     const ad = await KOPRU("papka_ad");
-    papkaVar = !!ad;
-    $("#papka-ad").textContent = ad ? "qovluq «" + ad + "»" : "Yükləmələr qovluğu";
-    $("#papka-sil").hidden = !ad;
+    qabiqKohne = !!ad && typeof ad === "object";  // köhnə qabıq bu əmri tanımır ("naməlum əmr")
+    papkaVar = typeof ad === "string" && !!ad;
+    $("#papka-ad").textContent = qabiqKohne ? "Yükləmələr qovluğu (qovluq seçimi üçün əlavəni yeniləyin: chrome://extensions → yenilə işarəsi)"
+      : papkaVar ? "qovluq «" + ad + "»" : "Yükləmələr qovluğu";
+    $("#papka-sil").hidden = !papkaVar;
+    $("#papka-sec").disabled = qabiqKohne;
   }
   $("#papka-sec").addEventListener("click", async () => {
+    if (qabiqKohne) return;
     const r = await KOPRU("papka_sec");
-    if (r && r.xeta) { if (r.xeta !== "ləğv edildi") netice([["x", "Qovluq seçilmədi: " + r.xeta + ". Fayllar Yükləmələr qovluğuna düşəcək."]]); return; }
+    if (r && r.xeta) { if (r.xeta === "naməlum əmr") { papkaGoster(); return; } if (r.xeta !== "ləğv edildi") netice([["x", "Qovluq seçilmədi: " + r.xeta + ". Fayllar Yükləmələr qovluğuna düşəcək."]]); return; }
     papkaGoster();
   });
   $("#papka-sil").addEventListener("click", async () => { await KOPRU("papka_sil"); papkaGoster(); });
