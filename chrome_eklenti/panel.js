@@ -120,7 +120,12 @@ async function isle(m) {
   if (m.t === "papka_ad") { const h = await idbGet("papka"); return h ? h.name : null; }
   if (m.t === "papka_sec") {
     try { const h = await window.showDirectoryPicker({ mode: "readwrite" }); await idbSet("papka", h); return { ad: h.name }; }
-    catch (e) { return { xeta: e && e.name === "AbortError" ? "ləğv edildi" : String(e && e.message || e) }; }
+    catch (e) {
+      if (e && e.name === "AbortError") return { xeta: "ləğv edildi" };
+      // yan paneldə fayl seçicisi bloklanıbsa: kiçik ayrıca pəncərədə seçilir
+      await chrome.windows.create({ url: chrome.runtime.getURL("qovluq.html"), type: "popup", width: 460, height: 230 });
+      return { pencere: true };
+    }
   }
   if (m.t === "papka_sil") { await idbSet("papka", null); return true; }
   if (m.t === "papka_icaze") { return !!(await papkaIcaze(true)); }

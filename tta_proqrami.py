@@ -31,7 +31,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph, Table, TableStyle
 
-VERSION = "1.5.1"
+VERSION = "1.5.2"
 ETAX = "https://new.e-taxes.gov.az"
 REYESTR_URL = ETAX + "/api/po/authless/public/v1/authless/findTaxpayer"
 KESH_FAYLI = "direktorlar.json"
@@ -832,20 +832,22 @@ def sehife(ws, bas, enler):
 
 
 # --------------------------------------------------------------------------- iş axını
-def tta_yaz(q, cixis, oflayn):
+def tta_yaz(q, cixis, oflayn, sened="ikisi"):
+    """sened: 'ikisi' (TTA + protokol), 'tta' (yalnız TTA), 'protokol' (yalnız qiymət razılaşdırma protokolu)"""
     sat = teref(q["gonderen_voen"], q["gonderen_ad"], oflayn)
     alc = teref(q["qebul_voen"], q["qebul_ad"], oflayn)
     ad = q["seriya"] + q["nomre"]
-    tta_xlsx(os.path.join(cixis, f"TTA_{ad}.xlsx"), q, sat, alc)
-    tta_pdf(os.path.join(cixis, f"TTA_{ad}.pdf"), q, sat, alc)
-    print(f"+ TTA_{ad}: {alc['ad']}  yekun {fmt(q['yekun'])}  direktor: {alc['direktor'] or '(tapılmadı)'}")
-    if AYAR.get("protokol_yarat", True):
+    if sened in ("ikisi", "tta"):
+        tta_xlsx(os.path.join(cixis, f"TTA_{ad}.xlsx"), q, sat, alc)
+        tta_pdf(os.path.join(cixis, f"TTA_{ad}.pdf"), q, sat, alc)
+        print(f"+ TTA_{ad}: {alc['ad']}  yekun {fmt(q['yekun'])}  direktor: {alc['direktor'] or '(tapılmadı)'}")
+    if sened == "protokol" or (sened == "ikisi" and AYAR.get("protokol_yarat", True)):
         tta_xlsx(os.path.join(cixis, f"Protokol_{ad}.xlsx"), q, sat, alc, True)
         tta_pdf(os.path.join(cixis, f"Protokol_{ad}.pdf"), q, sat, alc, True)
-        print(f"+ Protokol_{ad}")
+        print(f"+ Protokol_{ad}: {alc['ad']}  yekun {fmt(q['yekun'])}")
 
 
-def pdf_rejimi(girisler, cixis, oflayn):
+def pdf_rejimi(girisler, cixis, oflayn, sened="ikisi"):
     fayllar = []
     for g in girisler:
         fayllar += sorted(glob.glob(os.path.join(g, "*.pdf"))) if os.path.isdir(g) else [g]
@@ -856,7 +858,7 @@ def pdf_rejimi(girisler, cixis, oflayn):
         except Exception as e:
             print(f"! {os.path.basename(f)}: oxunmadı ({e})")
             continue
-        tta_yaz(q, cixis, oflayn)
+        tta_yaz(q, cixis, oflayn, sened)
         qaimeler.append(q)
     return qaimeler
 
@@ -908,7 +910,7 @@ def etaxes_rejimi(a, cixis):
         qaimeler.append(q)
         print(f"  {i}/{n} {q['seriya'] + q['nomre']} {q['tarix']} {q['status']}")
         if a.tta:
-            tta_yaz(q, cixis, a.oflayn)
+            tta_yaz(q, cixis, a.oflayn, getattr(a, "sened", "ikisi"))
         time.sleep(0.2)
 
     for kod, ad in istiqametler:
@@ -961,6 +963,9 @@ def menyu(a):
     print("  2) e-taxes: qaimə tərkibi (Excel) - seçdiyim tarix aralığında")
     print("  3) e-taxes: TTA hazırla - seçdiyim tarix aralığında (Excel + PDF)")
     sec = input("Seçim (1/2/3): ").strip()
+    if sec in ("1", "3"):
+        print("  Hansı sənəd hazırlansın?  1) TTA + Qiymət razılaşdırma protokolu   2) yalnız TTA   3) yalnız protokol")
+        a.sened = {"2": "tta", "3": "protokol"}.get(input("Seçim (1/2/3) [1]: ").strip(), "ikisi")
     if sec == "1":
         a.giris = [input("Qaimə PDF-lərinin qovluğu (cari qovluq üçün . yazın): ").strip() or "."]
         return a
@@ -993,7 +998,7 @@ def _dayandi():
 def isle_ve_yaz(a):
     """Seçilmiş rejimdə qaimələri işlə və nəticəni cixis qovluğuna yaz (konsol və pəncərə rejimi üçün ortaq)."""
     os.makedirs(a.cixis, exist_ok=True)
-    qaimeler = etaxes_rejimi(a, a.cixis) if a.etaxes else pdf_rejimi(a.giris, a.cixis, a.oflayn)
+    qaimeler = etaxes_rejimi(a, a.cixis) if a.etaxes else pdf_rejimi(a.giris, a.cixis, a.oflayn, getattr(a, "sened", "ikisi"))
     if qaimeler:
         if not getattr(a, "yalniz_tta", False):
             terkib_xlsx(os.path.join(a.cixis, "qaime_terkibi.xlsx"), qaimeler)
@@ -1046,6 +1051,9 @@ def pencere_rejimi(sinaq=False):
     v_ya = tk.StringVar(value=bu.strftime("%d.%m.%Y"))
     v_voen, v_nomre = tk.StringVar(), tk.StringVar()
     v_tarixce = tk.BooleanVar(value=True)
+    SENED = {"TTA + Protokol": "ikisi", "Yalnız TTA": "tta", "Yalnız protokol": "protokol"}
+    v_sened_ad = tk.StringVar(value="TTA + Protokol")
+    v_sened = type("V", (), {"get": staticmethod(lambda: SENED.get(v_sened_ad.get(), "ikisi"))})()
     v_pdf = tk.StringVar(value=os.getcwd())
     v_cixis = tk.StringVar(value=os.path.join(os.getcwd(), "cixis"))
     v_durum = tk.StringVar(value="Hazırdır. Seçim edib \"Başla\" düyməsinə basın.")
@@ -1064,6 +1072,11 @@ def pencere_rejimi(sinaq=False):
                         ("terkib", "e-taxes: tərkib (Excel)"),
                         ("tta", "e-taxes: TTA (Excel + PDF)")):
         ttk.Radiobutton(f1, text=metn, value=deyer, variable=v_rejim, command=lambda: gorunus()).pack(side="left", padx=(8, 4), pady=2)
+    f1b = ttk.Frame(kok)
+    f1b.pack(fill="x", padx=8, pady=(0, 2))
+    ttk.Label(f1b, text="TTA / PDF rejimində sənəd:").pack(side="left", padx=(8, 4))
+    cb_sened = ttk.Combobox(f1b, textvariable=v_sened_ad, values=list(SENED), state="readonly", width=18)
+    cb_sened.pack(side="left")
 
     # --- PDF
     f2 = blok(kok, "PDF qaimələrin qovluğu")
@@ -1136,6 +1149,7 @@ def pencere_rejimi(sinaq=False):
         for w in etaxes_vid:
             w.state(["!disabled"] if rj != "pdf" else ["disabled"])
         c1.state(["!disabled"] if rj == "terkib" else ["disabled"])
+        cb_sened.state(["!disabled"] if rj != "terkib" else ["disabled"])
 
     # --- düymələr
     dym = ttk.Frame(kok)
@@ -1209,7 +1223,7 @@ def pencere_rejimi(sinaq=False):
             return
         rj = v_rejim.get()
         a = argparse.Namespace(giris=[], etaxes=False, istiqamet="hamisi", il=None, dan=None, ya=None, nomre=None,
-                               voen=None, sade=False, tta=False, yalniz_tta=False, oflayn=False, yenile=False,
+                               voen=None, sade=False, tta=False, yalniz_tta=False, sened=v_sened.get(), oflayn=False, yenile=False,
                                pencere=True, cixis=(v_cixis.get().strip() or "cixis"))
         if rj == "pdf":
             yol = v_pdf.get().strip()
@@ -1304,6 +1318,7 @@ def main():
     ap.add_argument("--nomre", nargs="*", help="yalnız bu qaimə nömrələri")
     ap.add_argument("--sade", action="store_true", help="tarixçə/versiya/əlaqəli qaimələri götürmə (daha sürətli)")
     ap.add_argument("--tta", action="store_true", help="e-taxes rejimində hər qaimə üçün TTA da hazırla")
+    ap.add_argument("--sened", choices=["ikisi", "tta", "protokol"], default="ikisi", help="TTA + protokol / yalnız TTA / yalnız protokol")
     ap.add_argument("--cixis", default="cixis")
     ap.add_argument("--oflayn", action="store_true", help="reyestrə müraciət etmə")
     ap.add_argument("--pencere", action="store_true", help="proqram pəncərəsi ilə işlə (qara pəncərə əvəzinə)")

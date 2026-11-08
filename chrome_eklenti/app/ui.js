@@ -73,6 +73,16 @@
   $("#papka-sec").addEventListener("click", async () => {
     if (qabiqKohne) return;
     const r = await KOPRU("papka_sec");
+    if (r && r.pencere) {  // ayrıca pəncərədə seçilir: nəticəni gözləyirik
+      netice([["", "Açılan kiçik pəncərədə qovluğu seçin."]]);
+      const evvel = await KOPRU("papka_ad");
+      for (let i = 0; i < 60; i++) {
+        await gozle(1500);
+        const ad = await KOPRU("papka_ad");
+        if (typeof ad === "string" && ad && ad !== evvel) { netice([["ok", "Qovluq seçildi: " + ad]]); break; }
+      }
+      papkaGoster(); return;
+    }
     if (r && r.xeta) { if (r.xeta === "naməlum əmr") { papkaGoster(); return; } if (r.xeta !== "ləğv edildi") netice([["x", "Qovluq seçilmədi: " + r.xeta + ". Fayllar Yükləmələr qovluğuna düşəcək."]]); return; }
     papkaGoster();
   });
@@ -136,9 +146,8 @@
   $("#bas-tta").addEventListener("click", () => isle("tta", async () => {
     const o = oxu($("#b-tta"));
     if (!o.dan || !o.ya) return netice([["x", "Tarixləri seçin."]]);
-    const tta = o.f("tta"), prot = o.f("protokol");
-    if (!tta && !prot) return netice([["x", "TTA və ya protokoldan birini seçin."]]);
-    const q = await qaimeleriTopla({ ...o, sade: true }, (i, n) => { progress(i, n); netice([["", `İşləyir … ${i}/${n}`]]); });
+    const sn = $("[data-f=sened]", $("#b-tta")).value, tta = sn !== "protokol", prot = sn !== "tta";
+        const q = await qaimeleriTopla({ ...o, sade: true }, (i, n) => { progress(i, n); netice([["", `İşləyir … ${i}/${n}`]]); });
     if (!q.length) return netice([["", `${aralikYazi(o)} aralığında uyğun qaimə tapılmadı.`]]);
     netice([["", "Direktorlar reyestrdən yoxlanılır …"]]);
     const fayllar = []; son = { tta: [], protokol: [] }; const direktorsuz = [];
