@@ -484,13 +484,15 @@ async function edvBeyannameleri(cl, dan, ya) {
       const k = acar(rp.year, rp.month);
       if (k < d1 || k > d2) continue;
       gor.set(d.registrationNumber, { il: rp.year, ay: rp.month, no: d.registrationNumber, nov: d.declarationType,
-        status: d.declarationStatus, reg: (d.registrationDate || "").slice(0, 10), gonder: d.submissionDate || "", tutar: d.taxAmount });
+        status: d.declarationStatus, son: d.lastClarifying === "LAST", reg: (d.registrationDate || "").slice(0, 10), gonder: d.submissionDate || "", tutar: d.taxAmount });
     }
   }
   const ay = new Map();
   for (const b of gor.values()) {
     const k = acar(b.il, b.ay), c = ay.get(k);
-    if (!c || (b.reg + b.gonder + b.no) > (c.reg + c.gonder + c.no)) ay.set(k, b);
+    // e-taxes-in özünün "hesabat dövrünün sonuncu bəyannaməsi" işarəsi (lastClarifying = LAST) əsasdır; yoxdursa qeydiyyat tarixi ən gec olan
+    const yaxsi = !c || (b.son !== c.son ? b.son : (b.reg + b.gonder + b.no) > (c.reg + c.gonder + c.no));
+    if (yaxsi) ay.set(k, b);
   }
   return [...ay.entries()].sort((a, b) => a[0] - b[0]).map(([, b]) => b);
 }
