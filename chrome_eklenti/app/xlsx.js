@@ -49,6 +49,8 @@ async function zipYarat(files, sixis) { // files: [{ad, data: Uint8Array|string}
 // Üslub nömrələri (xlsxStyles ilə eyni sıra)
 const S = { NORMAL: 0, BASLIQ: 1, METN: 2, MERKEZ: 3, PUL: 4, QIYMET: 5, TITUL: 6, QALIN: 7, YEK_AD: 8, YEK_DEG: 9,
   GIRIS: 10, SAG_QALIN: 11, SAG: 12, TBASLIQ: 13, TPUL: 14, TQIYMET: 15, QALIN_SAR: 16 };
+const SAK = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16], SA = {};  // akt üçün iri şriftli üslub nüsxələri (köhnə indeks -> yeni)
+SAK.forEach((k, j) => { SA[k] = 17 + j; });
 function _styles() {
   const xf = (n, f, fi, b, al) => `<xf numFmtId="${n}" fontId="${f}" fillId="${fi}" borderId="${b}" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment ${al || ""}/></xf>`;
   const xfs = [
@@ -59,10 +61,12 @@ function _styles() {
     xf(0, 3, 2, 0, 'horizontal="center" vertical="center" wrapText="1"'), xf(164, 0, 0, 0), xf(165, 0, 0, 0),
     xf(0, 1, 0, 0, 'vertical="top" wrapText="1"'),
   ];
+  const ilk = xfs.slice();
+  for (const k of SAK) xfs.push(ilk[k].replace(/fontId="(\d)"/, (m, f) => `fontId="${[4, 5, 6, 5][f]}"`));
   const font = (sz, b) => `<font>${b ? "<b/>" : ""}<sz val="${sz}"/><name val="Arial"/></font>`;
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">` +
     `<numFmts count="2"><numFmt numFmtId="164" formatCode="#,##0.00"/><numFmt numFmtId="165" formatCode="#,##0.00#######"/></numFmts>` +
-    `<fonts count="4">${font(9)}${font(9, 1)}${font(12, 1)}${font(10, 1)}</fonts>` +
+    `<fonts count="7">${font(9)}${font(9, 1)}${font(12, 1)}${font(10, 1)}${font(11)}${font(11, 1)}${font(14, 1)}</fonts>` +
     `<fills count="4"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>` +
     `<fill><patternFill patternType="solid"><fgColor rgb="FFDCE6F2"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFEEF2F8"/></patternFill></fill></fills>` +
     `<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border>` +
@@ -135,11 +139,11 @@ function aktSehifesi(q, sat, alc, tip, rekv) {
   const rows = [[{ v: AYAR.sheher, s: S.QALIN }, "", "", "", "", "", { v: q.tarix, s: S.SAG_QALIN }], [], [{ v: `${basliq} № ${no}`, s: S.TITUL }], [],
     [{ v: girisMetni(q, sat, alc, tip), s: S.GIRIS }], [], [], [],
     ["№", "Malın / işin / xidmətin adı", "Kod", "Ölçü vahidi", "Miqdar", "Vahidin qiyməti", "Məbləğ"].map((v) => ({ v, s: S.BASLIQ }))];
-  const hundur = { 5: 18, 6: 18, 7: 18, 8: 18, 9: 32 };
+  const hundur = { 5: 22, 6: 22, 7: 22, 8: 22, 9: 34 };
   q.mallar.forEach((m, i) => {
     rows.push([{ v: i + 1, s: S.MERKEZ }, { v: m.ad, s: S.METN }, { v: m.kod, s: S.MERKEZ }, { v: m.olcu, s: S.MERKEZ },
       { v: m.miqdar, s: S.SAG }, { v: m.qiymet, s: S.QIYMET }, { v: m.mebleg, s: S.PUL }]);
-    hundur[rows.length] = m.ad.length > 58 ? 25 : 15;
+    hundur[rows.length] = m.ad.length > 44 ? 32 : 18;
   });
   const ilk = 10, son = rows.length;
   const cemi = r2(q.mallar.reduce((a, m) => a + m.mebleg, 0));
@@ -161,7 +165,8 @@ function aktSehifesi(q, sat, alc, tip, rekv) {
     row[3] = k === 1 ? { v: ab[k], s: S.QALIN_SAR } : k === 0 || k === 9 ? { v: ab[k], s: S.QALIN } : ab[k];
     rows.push(row);
   }
-  return { ad: tip === "protokol" ? "Protokol" : tip === "hesab" ? "Hesab-faktura" : "TTA", rows, eni: [5, 44, 15, 12, 10, 14, 14], hundur: { ...hundur, [b + 1]: 40 }, sigdir: true,
+  const iri = rows.map((r) => Array.from(r, (c) => (c == null || c === "" ? c : typeof c !== "object" ? { v: c, s: SA[0] } : { ...c, s: SA[c.s || 0] })));
+  return { ad: tip === "protokol" ? "Protokol" : tip === "hesab" ? "Hesab-faktura" : "TTA", rows: iri, eni: [5, 44, 15, 12, 10, 14, 14], hundur: { ...hundur, [b + 1]: 58 }, sigdir: true,
     birlesdir: ["A1:C1", "A3:G3", "A5:G8", `A${b + 1}:C${b + 1}`, `D${b + 1}:G${b + 1}`] };
 }
 
