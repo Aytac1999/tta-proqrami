@@ -1,8 +1,18 @@
 {
   "hamisina_ac": false,
-  "admin": ["SB7YT926", "FD6YU581"],
+  "admin": [
+    "SB7YT926",
+    "FD6YU581"
+  ],
   "istifadeciler": {
-    "SB7YT926": { "bitir": null },
-    "FD6YU581": { "bitir": null }
+    "SB7YT926": {
+      "bitir": null
+    },
+    "FD6YU581": {
+      "bitir": null
+    },
+    "W6G8K335": {
+      "bitir": "2027-02-11"
+    }
   }
 }
