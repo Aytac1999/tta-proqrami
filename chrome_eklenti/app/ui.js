@@ -332,12 +332,13 @@
       }
       LOG(`+ ${no}: ${alc.ad}  yekun ${fmt(x.yekun)}  direktor: ${alc.direktor || "(tapılmadı)"}`);
     }
-    const yer = await saxla(fayllar, `TTA_Protokol_${bugun()}.zip`);
+    const excelVar = o.f("excel");
+    const yer = excelVar ? await saxla(fayllar, `TTA_Protokol_${bugun()}.zip`) : "";
     $("#chap-qutu").hidden = false;
     $("#chap-tta").hidden = !son.tta.length; $("#chap-prot").hidden = !son.protokol.length; $("#chap-hesab").hidden = !son.hesab.length;
     const s = [["", `${aralikYazi(o)} aralığında ${q.length} qaimə tapıldı (gələn: ${say(q, "Gələn")}, göndərilən: ${say(q, "Göndərilən")}).`],
-      ["", `Hazırlandı: ${[son.tta.length ? son.tta.length + " TTA" : "", son.protokol.length ? son.protokol.length + " protokol" : "", son.hesab.length ? son.hesab.length + " hesab-faktura" : ""].filter(Boolean).join(", ")} (Excel).`],
-      ["ok", `Yerləşdirildi: ${yer}.`]];
+      ["", `Hazırlandı: ${[son.tta.length ? son.tta.length + " TTA" : "", son.protokol.length ? son.protokol.length + " protokol" : "", son.hesab.length ? son.hesab.length + " hesab-faktura" : ""].filter(Boolean).join(", ")}${excelVar ? " (Excel)" : ""}.`],
+      ...(excelVar ? [["ok", `Yerləşdirildi: ${yer}.`]] : [["ok", "Excel yüklənmədi. Aşağıdakı çap düymələrindən PDF çıxarın."]])];
     if (direktorsuz.length) s.push(["x", `Direktoru tapılmayan ${direktorsuz.length} qaimə var (imza xanası boş qalıb): ${direktorsuz.slice(0, 5).join(", ")}${direktorsuz.length > 5 ? " …" : ""}`]);
     if (rekvsiz.length) s.push(["x", `${rekvsiz.length} hesab-fakturada satıcı üçün rekvizit tapılmadı (xanalar boş qalıb): ${rekvsiz.slice(0, 5).join(", ")}${rekvsiz.length > 5 ? " …" : ""}`]);
     s.push(["", "PDF lazımdırsa, aşağıdakı çap düymələrindən istifadə edin."]);
