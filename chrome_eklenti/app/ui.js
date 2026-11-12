@@ -302,6 +302,8 @@
     if (o.dan > o.ya) return netice([["x", "Başlanğıc tarix son tarixdən böyük ola bilməz."]]);
     const tta = o.f("tta"), prot = o.f("protokol"), hes = o.f("hesab");
     if (!tta && !prot && !hes) return netice([["x", "Ən azı bir sənəd növünü seçin."]]);
+    const excelVar = o.f("excel"), pdfVar = o.f("pdf");
+    if (!excelVar && !pdfVar) return netice([["x", "PDF və ya Excel xanalarından ən azı birini seçin."]]);
     if (hes) {
       await rekvSaxla(true);  // formada yazılıb, amma saxlanmayıbsa, saxla
       rekvDict = await rekvizitler();
@@ -322,26 +324,26 @@
       const sat = await teref(x.gonderen_voen, x.gonderen_ad), alc = await teref(x.qebul_voen, x.qebul_ad);
       const no = faylAdi(x, sat, alc);
       if (!sat.direktor || !alc.direktor) direktorsuz.push(x.seriya + x.nomre);
-      if (tta) { fayllar.push({ ad: `TTA_${no}.xlsx`, data: await xlsxYarat([aktSehifesi(x, sat, alc, false)]), mime: XLSX_MIME }); son.tta.push([x, sat, alc]); }
-      if (prot) { fayllar.push({ ad: `Protokol_${no}.xlsx`, data: await xlsxYarat([aktSehifesi(x, sat, alc, true)]), mime: XLSX_MIME }); son.protokol.push([x, sat, alc]); }
+      const yaz = async (ad, tip, rk) => {
+        if (excelVar) fayllar.push({ ad: `${ad}_${no}.xlsx`, data: await xlsxYarat([aktSehifesi(x, sat, alc, tip, rk)]), mime: XLSX_MIME });
+        if (pdfVar) fayllar.push({ ad: `${ad}_${no}.pdf`, data: await aktPdf(x, sat, alc, tip, rk), mime: "application/pdf" });
+      };
+      if (tta) { await yaz("TTA", false); son.tta.push([x, sat, alc]); }
+      if (prot) { await yaz("Protokol", true); son.protokol.push([x, sat, alc]); }
       if (hes) {
         const rk = rekvizitSec(rekvDict, sat.voen);
         if (!rk) rekvsiz.push(x.seriya + x.nomre);
-        fayllar.push({ ad: `Hesab_faktura_${no}.xlsx`, data: await xlsxYarat([aktSehifesi(x, sat, alc, "hesab", rk)]), mime: XLSX_MIME });
+        await yaz("Hesab_faktura", "hesab", rk);
         son.hesab.push([x, sat, alc, rk]);
       }
       LOG(`+ ${no}: ${alc.ad}  yekun ${fmt(x.yekun)}  direktor: ${alc.direktor || "(tapılmadı)"}`);
     }
-    const excelVar = o.f("excel");
-    const yer = excelVar ? await saxla(fayllar, `TTA_Protokol_${bugun()}.zip`) : "";
-    $("#chap-qutu").hidden = false;
-    $("#chap-tta").hidden = !son.tta.length; $("#chap-prot").hidden = !son.protokol.length; $("#chap-hesab").hidden = !son.hesab.length;
+    const yer = await saxla(fayllar, `TTA_Protokol_${bugun()}.zip`);
     const s = [["", `${aralikYazi(o)} aralığında ${q.length} qaimə tapıldı (gələn: ${say(q, "Gələn")}, göndərilən: ${say(q, "Göndərilən")}).`],
-      ["", `Hazırlandı: ${[son.tta.length ? son.tta.length + " TTA" : "", son.protokol.length ? son.protokol.length + " protokol" : "", son.hesab.length ? son.hesab.length + " hesab-faktura" : ""].filter(Boolean).join(", ")}${excelVar ? " (Excel)" : ""}.`],
-      ...(excelVar ? [["ok", `Yerləşdirildi: ${yer}.`]] : [["ok", "Excel yüklənmədi. Aşağıdakı çap düymələrindən PDF çıxarın."]])];
+      ["", `Hazırlandı: ${[son.tta.length ? son.tta.length + " TTA" : "", son.protokol.length ? son.protokol.length + " protokol" : "", son.hesab.length ? son.hesab.length + " hesab-faktura" : ""].filter(Boolean).join(", ")}${[pdfVar ? "PDF" : "", excelVar ? "Excel" : ""].filter(Boolean).join(" + ").replace(/^/, " (").replace(/$/, ")")}.`],
+      ["ok", `Yerləşdirildi: ${yer}.`]];
     if (direktorsuz.length) s.push(["x", `Direktoru tapılmayan ${direktorsuz.length} qaimə var (imza xanası boş qalıb): ${direktorsuz.slice(0, 5).join(", ")}${direktorsuz.length > 5 ? " …" : ""}`]);
     if (rekvsiz.length) s.push(["x", `${rekvsiz.length} hesab-fakturada satıcı üçün rekvizit tapılmadı (xanalar boş qalıb): ${rekvsiz.slice(0, 5).join(", ")}${rekvsiz.length > 5 ? " …" : ""}`]);
-    s.push(["", "PDF lazımdırsa, aşağıdakı çap düymələrindən istifadə edin."]);
     netice(s);
   }));
 
