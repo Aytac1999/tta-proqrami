@@ -302,8 +302,8 @@
     if (o.dan > o.ya) return netice([["x", "Başlanğıc tarix son tarixdən böyük ola bilməz."]]);
     const tta = o.f("tta"), prot = o.f("protokol"), hes = o.f("hesab");
     if (!tta && !prot && !hes) return netice([["x", "Ən azı bir sənəd növünü seçin."]]);
-    const excelVar = o.f("excel"), pdfVar = o.f("pdf");
-    if (!excelVar && !pdfVar) return netice([["x", "PDF və ya Excel xanalarından ən azı birini seçin."]]);
+    const fmtSec = ($("[data-f=format]", $("#b-tta")) || {}).value || "pdf";
+    const excelVar = fmtSec !== "pdf", pdfVar = fmtSec !== "excel";
     if (hes) {
       await rekvSaxla(true);  // formada yazılıb, amma saxlanmayıbsa, saxla
       rekvDict = await rekvizitler();
