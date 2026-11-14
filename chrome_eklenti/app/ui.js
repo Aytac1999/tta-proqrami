@@ -296,6 +296,35 @@
       ["ok", `Yerləşdirildi: ${yer}.`]]);
   }));
 
+  $("#bas-qaime").addEventListener("click", () => isle("qaime", async () => {
+    const fl = $("#qaime-fayl").files[0];
+    if (!fl) return netice([["x", "Əvvəl Excel faylını seçin."]]);
+    const sat = await xlsxOxu(await fl.arrayBuffer(), "Qaimə");
+    const { qaimeler, xeta } = qaimeQrupla(sat);
+    if (!qaimeler.length) return netice([["x", "Faylda doldurulmuş sətir tapılmadı."]]);
+    if (xeta.length) return netice([["x", `${xeta.length} xəta tapıldı, heç nə yaradılmadı:`], ...xeta.slice(0, 15).map((t) => ["x", t]), ...(xeta.length > 15 ? [["x", "…"]] : [])]);
+    const sets = qaimeler.reduce((a, q) => a + q.mallar.length, 0);
+    if ($("#qaime-yoxla").checked) return netice([["ok", `Yoxlama keçdi: ${qaimeler.length} qaimə, ${sets} mal sətri.`], ["", "Qaralama yaratmaq üçün «Əvvəl yalnız yoxla» işarəsini götürüb yenidən basın."]]);
+    const et = new ETaxes(), vah = await vahidSiyahisi(et), sonuc = [];
+    for (const q of qaimeler) for (const m of q.mallar) if (!vah[m.vahid.toLowerCase()]) xeta.push(`Sətir ${m.no}: «${m.vahid}» ölçü vahidi e-taxes siyahısında yoxdur.`);
+    if (xeta.length) return netice([["x", "Heç nə yaradılmadı:"], ...xeta.slice(0, 15).map((t) => ["x", t])]);
+    for (let i = 0; i < qaimeler.length; i++) {
+      if (dayan) break;
+      const q = qaimeler[i]; progress(i, qaimeler.length); netice([["", `Yaradılır … ${i}/${qaimeler.length}`], ...sonuc]);
+      try {
+        const rey = await reyestr(q.voen);
+        if (!rey) { sonuc.push(["x", `${q.key}: alıcı VÖEN ${q.voen} reyestrdə tapılmadı.`]); continue; }
+        const sr = await et.istek("GET", "/api/po/invoice/public/v1/generateSerialNumber/defaultInvoice");
+        if (sr.status >= 400) throw new Error("seriya nömrəsi alınmadı (" + sr.status + ")");
+        let serial = sr.text.trim(); try { const j = JSON.parse(sr.text); serial = typeof j === "string" ? j : j.serialNumber || j.serial || serial; } catch (e) {}
+        const r = await et.istek("POST", QAIME_POST, { json: qaimeGovdesi(q, rey.ad, serial, vah) });
+        if (r.status >= 400) throw new Error(`HTTP ${r.status}: ${String(r.text).slice(0, 200)}`);
+        sonuc.push(["ok", `${q.key} → ${serial} (${q.mallar.length} mal) qaralama yaradıldı.`]);
+      } catch (e) { if (e instanceof SessiyaXetasi) throw e; sonuc.push(["x", `${q.key}: ${e.message}`]); }
+    }
+    netice([["", "Bitdi. Qaralamaları e-taxes-də «Qaralamalar» bölməsində yoxlayıb özünüz göndərin."], ...sonuc]);
+  }));
+
   $("#bas-tta").addEventListener("click", () => isle("tta", async () => {
     const o = oxu($("#b-tta"));
     if (!o.dan || !o.ya) return netice([["x", "Tarixi gg.aa.iiii formatında düzgün yazın (məs. 08.10.2026)."]]);

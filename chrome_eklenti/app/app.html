@@ -8,7 +8,7 @@
   <div id="xeberdarliq" class="xeb" hidden>e-taxes-ə daxil olunmayıb. Səhifədə Asan İmza ilə daxil olun. <button id="ac">e-taxes-i aç</button></div>
   <div class="papka">Fayllar: <b id="papka-ad">Yükləmələr qovluğu</b>
     <button id="papka-sec">Qovluq seç…</button><button id="papka-sil" hidden title="Standarta qayıt">×</button></div>
-  <nav><button data-b="terkib" class="aktiv">1. Tərkib (Excel)</button><button data-b="tta">2. Sənədlər</button><button data-b="edv">3. ƏDV əvəzləşməsi</button><button data-b="icaze" id="nav-icaze" hidden>İcazələr</button></nav>
+  <nav><button data-b="terkib" class="aktiv">1. Tərkib (Excel)</button><button data-b="tta">2. Sənədlər</button><button data-b="edv">3. ƏDV əvəzləşməsi</button><button data-b="qaime">4. Qaimə yazma</button><button data-b="icaze" id="nav-icaze" hidden>İcazələr</button></nav>
 
   <section id="b-terkib" class="bolme">
     <label>İstiqamət<select data-f="ist"><option value="hamisi">Gələn + Göndərilən</option><option value="gelen">Yalnız gələn</option><option value="gonderilen">Yalnız göndərilən</option></select></label>
@@ -24,6 +24,13 @@
     <p class="qeyd">Hər ay üçün ən son ƏDV bəyannaməsi (cari / dəqiqləşdirilmiş / kameral) götürülür, "Əvəzləşdirmə üçün elektron qaimələr" və idxal (YGB) Excel-ə yazılır.</p>
     <div class="ikili"><label>Başlanğıc ay<input type="month" data-f="edvdan"></label><label>Son ay<input type="month" data-f="edvya"></label></div>
     <button class="esas" id="bas-edv">ƏDV əvəzləşməsi Excel-i hazırla</button>
+  </section>
+
+  <section id="b-qaime" class="bolme" hidden>
+    <p class="qeyd">Doldurulmuş Qaimə şablonunu (Excel) seçin. Qaimələr e-taxes-də <b>qaralama</b> kimi yaradılır. Göndərməni özünüz edirsiniz.</p>
+    <label>Excel faylı<input type="file" id="qaime-fayl" accept=".xlsx"></label>
+    <label class="cek"><input type="checkbox" id="qaime-yoxla" checked> Əvvəl yalnız yoxla (qaralama yaratma)</label>
+    <button class="esas" id="bas-qaime">Qaralamaları yarat</button>
   </section>
 
   <section id="b-icaze" class="bolme" hidden>
