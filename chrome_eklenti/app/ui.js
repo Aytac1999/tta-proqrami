@@ -296,6 +296,13 @@
       ["ok", `Yerləşdirildi: ${yer}.`]]);
   }));
 
+  $("#qaime-sablon").addEventListener("click", async () => {
+    icaze = papkaVar ? await KOPRU("papka_icaze") : false;
+    const bin = atob(QAIME_SABLON_B64), data = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+    const yer = await saxla([{ ad: "Qaime_sablonu.xlsx", data, mime: XLSX_MIME }]);
+    netice([["ok", `Şablon yerləşdirildi: ${yer}.`]]);
+  });
+
   $("#bas-qaime").addEventListener("click", () => isle("qaime", async () => {
     const fl = $("#qaime-fayl").files[0];
     if (!fl) return netice([["x", "Əvvəl Excel faylını seçin."]]);
