@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "ƏDV Bəyannamələri - e-taxes",
+  "version": "1.1.0",
+  "description": "e-taxes-dəki ƏDV bəyannamələrini bir yığcam Excel cədvəlinə çıxarır. Yalnız oxuyur. Yenidən daxil olmaq tələb olunmur. Proqram GitHub-dan avtomatik yenilənir.",
+  "action": {
+    "default_title": "ƏDV Bəyannamələri",
+    "default_icon": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png", "128": "icons/icon128.png" }
+  },
+  "icons": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png", "128": "icons/icon128.png" },
+  "background": { "service_worker": "background.js" },
+  "permissions": ["scripting", "storage"],
+  "host_permissions": ["https://new.e-taxes.gov.az/*", "https://raw.githubusercontent.com/*"],
+  "sandbox": { "pages": ["sandbox.html"] }
+}
