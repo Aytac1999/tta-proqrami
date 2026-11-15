@@ -303,6 +303,36 @@
     netice([["ok", `Şablon yerləşdirildi: ${yer}.`]]);
   });
 
+  $("#bas-qaime-html").addEventListener("click", () => isle("qaime-html", async () => {
+    const et = new ETaxes(), il = new Date().getFullYear(), sabah = new Date(Date.now() + 864e5);
+    const govde = { sortBy: "creationDate", sortAsc: false, statuses: null, types: ["current", "corrected"], kinds: null, serialNumber: null, senderTin: null,
+      senderName: null, productName: null, productCode: null, receiverTin: null, receiverName: null, creationDateFrom: `01-01-${il - 1} 00:00`,
+      creationDateTo: `${ddmmyyyy(isoG(sabah))} 00:00`, amountFrom: null, amountTo: null, offset: 0, maxCount: 50, actionOwner: null };
+    const siyahi = [];
+    for (;;) {
+      const r = await et.istek("POST", "/api/po/invoice/public/v1/invoice/find.draft", { json: govde });
+      if (r.status >= 400) throw new Error("qaralama siyahısı alınmadı (" + r.status + ")");
+      const j = JSON.parse(r.text), sira = j.invoices || [];
+      siyahi.push(...sira);
+      if (!j.hasMore || !sira.length) break;
+      govde.offset += sira.length;
+    }
+    if (!siyahi.length) return netice([["", "e-taxes-də qaralama tapılmadı."]]);
+    const fayllar = [], xeta = [], te = new TextEncoder();
+    for (let i = 0; i < siyahi.length; i++) {
+      if (dayan) break;
+      const q = siyahi[i]; progress(i, siyahi.length); netice([["", `Yüklənir … ${i}/${siyahi.length}`]]);
+      try {
+        const r = await et.istek("GET", `/api/po/invoice/public/v1/invoiceV2/${q.id}/download`, { params: { sourceSystem: q.sourceSystem || "lk", target: "document" } });
+        if (r.status >= 400 || !r.text) throw new Error("HTTP " + r.status);
+        fayllar.push({ ad: `qaime_${q.serialNumber || q.id}.html`, data: te.encode(r.text), mime: "text/html" });
+      } catch (e) { if (e instanceof SessiyaXetasi) throw e; xeta.push(`${q.serialNumber || q.id}: ${e.message}`); }
+    }
+    if (!fayllar.length) return netice([["x", "Heç bir fayl yüklənmədi."], ...xeta.map((t) => ["x", t])]);
+    const yer = await saxla(fayllar, `qaralamalar_${bugun()}.zip`);
+    netice([["", `${siyahi.length} qaralama tapıldı, ${fayllar.length} HTML fayl hazırlandı.`], ...xeta.map((t) => ["x", t]), ["ok", `Yerləşdirildi: ${yer}.`]]);
+  }));
+
   $("#bas-qaime").addEventListener("click", () => isle("qaime", async () => {
     const fl = $("#qaime-fayl").files[0];
     if (!fl) return netice([["x", "Əvvəl Excel faylını seçin."]]);
