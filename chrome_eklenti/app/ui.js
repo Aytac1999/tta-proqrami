@@ -325,12 +325,12 @@
       try {
         const r = await et.istek("GET", `/api/po/invoice/public/v1/invoiceV2/${q.id}/download`, { params: { sourceSystem: q.sourceSystem || "lk", target: "document" } });
         if (r.status >= 400 || !r.text) throw new Error("HTTP " + r.status);
-        fayllar.push({ ad: `qaime_${q.serialNumber || q.id}.html`, data: te.encode(r.text), mime: "text/html" });
+        fayllar.push({ ad: `qaime_${q.serialNumber || q.id}.xhtml`, data: te.encode(r.text), mime: "application/xhtml+xml" });
       } catch (e) { if (e instanceof SessiyaXetasi) throw e; xeta.push(`${q.serialNumber || q.id}: ${e.message}`); }
     }
     if (!fayllar.length) return netice([["x", "Heç bir fayl yüklənmədi."], ...xeta.map((t) => ["x", t])]);
     const yer = await saxla(fayllar, `qaralamalar_${bugun()}.zip`);
-    netice([["", `${siyahi.length} qaralama tapıldı, ${fayllar.length} HTML fayl hazırlandı.`], ...xeta.map((t) => ["x", t]), ["ok", `Yerləşdirildi: ${yer}.`]]);
+    netice([["", `${siyahi.length} qaralama tapıldı, ${fayllar.length} xhtml fayl hazırlandı.`], ...xeta.map((t) => ["x", t]), ["ok", `Yerləşdirildi: ${yer}.`]]);
   }));
 
   $("#bas-qaime").addEventListener("click", () => isle("qaime", async () => {
