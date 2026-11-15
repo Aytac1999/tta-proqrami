@@ -325,7 +325,12 @@
       try {
         const r = await et.istek("GET", `/api/po/invoice/public/v1/invoiceV2/${q.id}/download`, { params: { sourceSystem: q.sourceSystem || "lk", target: "document" } });
         if (r.status >= 400 || !r.text) throw new Error("HTTP " + r.status);
-        fayllar.push({ ad: `qaime_${q.serialNumber || q.id}.xhtml`, data: te.encode(r.text), mime: "application/xhtml+xml" });
+        let metn = r.text;
+        try {  // XSL-i özümüz tətbiq edirik: dəyərlər hər brauzerdə xanaların içində görünsün
+          const xd = new DOMParser().parseFromString(r.text, "application/xml"), xs = xd.getElementById("stylesheet") || xd.querySelector("[id=stylesheet]");
+          if (xs) { const ps = new XSLTProcessor(); ps.importStylesheet(xs); metn = '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(ps.transformToDocument(xd)); }
+        } catch (e) { metn = r.text; }
+        fayllar.push({ ad: `qaime_${q.serialNumber || q.id}.xhtml`, data: te.encode(metn), mime: "application/xhtml+xml" });
       } catch (e) { if (e instanceof SessiyaXetasi) throw e; xeta.push(`${q.serialNumber || q.id}: ${e.message}`); }
     }
     if (!fayllar.length) return netice([["x", "Heç bir fayl yüklənmədi."], ...xeta.map((t) => ["x", t])]);
