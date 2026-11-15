@@ -70,9 +70,10 @@ function qaimeQrupla(setirler) {
     const s = setirler[i]; if (!s || !s.some((x) => x != null && x !== "")) continue;
     const no = i + 1, ad = _s(s[4]);
     if (!ad && !_s(s[0]) && _n(s[8]) == null) continue;
-    const key = _s(s[0]) || "_" + no;
-    if (!qs.has(key)) qs.set(key, { key, voen: _s(s[1]).replace(/\D/g, ""), esas: _s(s[2]), obyekt: _s(s[3]), mallar: [], ilk: no });
+    const key = _s(s[0]) || "_" + no, nov_ = /avans/i.test(_s(s[18])) ? "advanceInvoice" : "defaultInvoice";
+    if (!qs.has(key)) qs.set(key, { key, voen: _s(s[1]).replace(/\D/g, ""), esas: _s(s[2]), obyekt: _s(s[3]), mallar: [], ilk: no, kind: nov_ });
     const q = qs.get(key);
+    if (q.kind !== nov_) xeta.push(`Sətir ${no}: eyni qaimədə Mal və Avans qarışıb.`);
     if (_s(s[1]).replace(/\D/g, "") !== q.voen) xeta.push(`Sətir ${no}: alıcı VÖEN eyni qaimədə fərqlidir.`);
     const miq = _n(s[8]), qiy = _n(s[9]), aks = _n(s[10]), yol = _n(s[12]), nov = _edvNov(s[11]);
     if (!ad) xeta.push(`Sətir ${no}: malın adı yoxdur.`);
@@ -102,7 +103,7 @@ function qaimeSetiri(m, vahidKodu) {
 }
 function qaimeGovdesi(q, ad, serial, vahidler) {
   return {
-    kind: "defaultInvoice",
+    kind: q.kind,
     receiver: { tin: q.voen, pin: null, passportSerialNumber: null, name: ad, objectName: q.obyekt || "", objectCode: null },
     resaleType: null, serialNumber: serial, invoiceComment: q.esas, invoiceComment2: "", type: "current",
     items: q.mallar.map((m) => qaimeSetiri(m, vahidler[m.vahid.toLowerCase()])),

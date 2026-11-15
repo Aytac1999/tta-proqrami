@@ -321,12 +321,12 @@
       try {
         const rey = await reyestr(q.voen);
         if (!rey) { sonuc.push(["x", `${q.key}: alıcı VÖEN ${q.voen} reyestrdə tapılmadı.`]); continue; }
-        const sr = await et.istek("GET", "/api/po/invoice/public/v1/generateSerialNumber/defaultInvoice");
+        const sr = await et.istek("GET", "/api/po/invoice/public/v1/generateSerialNumber/" + q.kind);
         if (sr.status >= 400) throw new Error("seriya nömrəsi alınmadı (" + sr.status + ")");
         let serial = sr.text.trim(); try { const j = JSON.parse(sr.text); serial = typeof j === "string" ? j : j.serialNumber || j.serial || serial; } catch (e) {}
         const r = await et.istek("POST", QAIME_POST, { json: qaimeGovdesi(q, rey.ad, serial, vah) });
         if (r.status >= 400) throw new Error(`HTTP ${r.status}: ${String(r.text).slice(0, 200)}`);
-        sonuc.push(["ok", `${q.key} → ${serial} (${q.mallar.length} mal) qaralama yaradıldı.`]);
+        sonuc.push(["ok", `${q.key} → ${serial} (${q.kind === "advanceInvoice" ? "avans, " : ""}${q.mallar.length} mal) qaralama yaradıldı.`]);
       } catch (e) { if (e instanceof SessiyaXetasi) throw e; sonuc.push(["x", `${q.key}: ${e.message}`]); }
     }
     netice([["", "Bitdi. Qaralamaları e-taxes-də «Qaralamalar» bölməsində yoxlayıb özünüz göndərin."], ...sonuc]);
