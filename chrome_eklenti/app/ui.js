@@ -376,7 +376,7 @@
     }
     const yer = await saxla(fayllar, `TTA_Protokol_${bugun()}.zip`);
     const s = [["", `${aralikYazi(o)} aralığında ${q.length} qaimə tapıldı (gələn: ${say(q, "Gələn")}, göndərilən: ${say(q, "Göndərilən")}).`],
-      ["", `Hazırlandı: ${[son.tta.length ? son.tta.length + " TTA" : "", son.protokol.length ? son.protokol.length + " protokol" : "", son.hesab.length ? son.hesab.length + " hesab-faktura" : ""].filter(Boolean).join(", ")}${[pdfVar ? "PDF" : "", excelVar ? "Excel" : ""].filter(Boolean).join(" + ").replace(/^/, " (").replace(/$/, ")")}.`],
+      ["", `Hazırlandı: ${[son.tta.length ? son.tta.length + " TTA" : "", son.protokol.length ? son.protokol.length + " qiymət razılaşdırma protokolu" : "", son.hesab.length ? son.hesab.length + " hesab-faktura" : ""].filter(Boolean).join(", ")}${[pdfVar ? "PDF" : "", excelVar ? "Excel" : ""].filter(Boolean).join(" + ").replace(/^/, " (").replace(/$/, ")")}.`],
       ["ok", `Yerləşdirildi: ${yer}.`]];
     if (direktorsuz.length) s.push(["x", `Direktoru tapılmayan ${direktorsuz.length} qaimə var (imza xanası boş qalıb): ${direktorsuz.slice(0, 5).join(", ")}${direktorsuz.length > 5 ? " …" : ""}`]);
     if (rekvsiz.length) s.push(["x", `${rekvsiz.length} hesab-fakturada satıcı üçün rekvizit tapılmadı (xanalar boş qalıb): ${rekvsiz.slice(0, 5).join(", ")}${rekvsiz.length > 5 ? " …" : ""}`]);
