@@ -104,12 +104,11 @@ async function aktPdf(q, sat, alc, tip, rekv) {
   let sh, y;
   const yeni = () => { sh = new _Sehife(); sehifeler.push(sh); y = _PYUXARI; };
   const sag = _PSOL + _PEN;
-  const PR = tip === "protokol";
-  const sutun = PR ? [22, 225, 62, 70, 62, 74.28] : [22, 190, 62, 48, 52, 66, 75.28];  // sütun enləri (cəmi 515,28)
+  const sutun = [22, 190, 62, 48, 52, 66, 75.28];  // sütun enləri (cəmi 515,28)
   const x0 = [_PSOL]; for (const e of sutun) x0.push(x0[x0.length - 1] + e);
   const SZ = 9.5, LH = 12;
   const basliqCedvel = () => {
-    const bt = PR ? ["№", "Malın / işin / xidmətin adı", "Ölçü vahidi", "Razılaşdırılmış vahid qiyməti (ƏDV-siz)", "ƏDV", "ƏDV ilə vahid qiyməti"] : ["№", "Malın / işin / xidmətin adı", "Kod", "Ölçü vahidi", "Miqdar", "Vahidin qiyməti", "Məbləğ"];
+    const bt = ["№", "Malın / işin / xidmətin adı", "Kod", "Ölçü vahidi", "Miqdar", "Vahidin qiyməti", "Məbləğ"];
     const sat_ = bt.map((t, i) => _sar(t, 9, true, sutun[i] - 6));
     const h = Math.max(...sat_.map((s) => s.length)) * 11 + 8;
     sutun.forEach((e, i) => sh.dort(x0[i], y, e, h, _pBoz));
@@ -131,20 +130,11 @@ async function aktPdf(q, sat, alc, tip, rekv) {
     const by = y + 4 + SZ - 1, orta = (k) => x0[k] + sutun[k] / 2, sagK = (k) => x0[k] + sutun[k] - 4;
     sh.yazOrta(orta(0), by, String(i + 1), SZ, false);
     ad.forEach((t, k) => sh.yaz(x0[1] + 4, by + k * LH, t, SZ, false));
-    if (PR) {
-      const vq = m.miqdar ? r2(m.edv / m.miqdar) : 0;
-      sh.yazOrta(orta(2), by, m.olcu, SZ, false);
-      sh.yazSag(sagK(3), by, fmtQiymet(m.qiymet), SZ, false); sh.yazSag(sagK(4), by, fmtQiymet(vq), SZ, false);
-      sh.yazSag(sagK(5), by, fmtQiymet(r2(m.qiymet + vq)), SZ, false);
-    } else {
     sh.yazOrta(orta(2), by, m.kod, SZ, false); sh.yazOrta(orta(3), by, m.olcu, SZ, false);
     sh.yazSag(sagK(4), by, String(m.miqdar).replace(".", ","), SZ, false);
     sh.yazSag(sagK(5), by, fmtQiymet(m.qiymet), SZ, false); sh.yazSag(sagK(6), by, fmt(m.mebleg), SZ, false);
-    }
     y += h;
   }
-  let yaz = [];
-  if (!PR) {
   const cemi = q.cemi != null ? q.cemi : r2(q.mallar.reduce((a, m) => a + m.mebleg, 0));
   const yek = [["Cəmi", fmt(cemi)], [edvEtiketi(q), fmt(q.edv)], ["Yekun", fmt(q.yekun)]];
   if (y + 3 * 17 > _PH[1] - _PASAGI) { yeni(); }
@@ -154,8 +144,7 @@ async function aktPdf(q, sat, alc, tip, rekv) {
     y += 17;
   }
   y += 22;
-  yaz = _sar("Yekun məbləğ (yazı ilə): " + meblegYazi(q.yekun), 10, true, _PEN);
-  } else y += 22;
+  const yaz = _sar("Yekun məbləğ (yazı ilə): " + meblegYazi(q.yekun), 10, true, _PEN);
   const iddia = iddiaMetni(tip) ? _sar(iddiaMetni(tip), SZ, false, _PEN) : [];
   const lazim = yaz.length * 13 + iddia.length * 13 + 20;
   if (y + lazim > _PH[1] - _PASAGI) yeni();
@@ -178,7 +167,8 @@ async function aktPdf(q, sat, alc, tip, rekv) {
   if (y + yuksek > _PH[1] - _PASAGI) yeni();
   const blok = (x, bas, ad, t, dir) => {
     let yy = y; sh.yaz(x, yy + 9, bas, 10, true); yy += 13;
-    for (const l of ad) { sh.yaz(x, yy + 9, l, 10, true); yy += 12; }
+    ad.forEach((l, k) => sh.yaz(x, yy + 9 + k * 12, l, 10, true));
+    yy += Math.max(adS.length, adA.length) * 12;  // iki tərəfdə eyni hündürlük: VÖEN və direktor eyni səviyyədə
     sh.yaz(x, yy + 9, `VÖEN: ${t.voen}`, 10, false); yy += 28;
     for (const l of dir) { sh.yaz(x, yy + 9, l, 10, false); yy += 12; }
     return yy;

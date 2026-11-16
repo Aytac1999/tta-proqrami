@@ -138,27 +138,19 @@ function aktSehifesi(q, sat, alc, tip, rekv) {
   const basliq = aktBasliq(tip);
   const rows = [[{ v: AYAR.sheher, s: S.QALIN }, "", "", "", "", "", { v: q.tarix, s: S.SAG_QALIN }], [], [{ v: `${basliq} № ${no}`, s: S.TITUL }], [],
     [{ v: girisMetni(q, sat, alc, tip), s: S.GIRIS }], [], [], [],
-    (tip === "protokol" ? ["№", "Malın / işin / xidmətin adı", "Ölçü vahidi", "Razılaşdırılmış vahid qiyməti (ƏDV-siz)", "ƏDV", "ƏDV ilə vahid qiyməti"] : ["№", "Malın / işin / xidmətin adı", "Kod", "Ölçü vahidi", "Miqdar", "Vahidin qiyməti", "Məbləğ"]).map((v) => ({ v, s: S.BASLIQ }))];
+    ["№", "Malın / işin / xidmətin adı", "Kod", "Ölçü vahidi", "Miqdar", "Vahidin qiyməti", "Məbləğ"].map((v) => ({ v, s: S.BASLIQ }))];
   const hundur = { 5: 22, 6: 22, 7: 22, 8: 22, 9: 34 };
   q.mallar.forEach((m, i) => {
-    if (tip === "protokol") {
-      const vq = m.miqdar ? r2(m.edv / m.miqdar) : 0;
-      rows.push([{ v: i + 1, s: S.MERKEZ }, { v: m.ad, s: S.METN }, { v: m.olcu, s: S.MERKEZ }, { v: m.qiymet, s: S.QIYMET }, { v: vq, s: S.QIYMET }, { v: r2(m.qiymet + vq), s: S.QIYMET }]);
-      hundur[rows.length] = m.ad.length > 44 ? 32 : 18; return;
-    }
     rows.push([{ v: i + 1, s: S.MERKEZ }, { v: m.ad, s: S.METN }, { v: m.kod, s: S.MERKEZ }, { v: m.olcu, s: S.MERKEZ },
       { v: m.miqdar, s: S.SAG }, { v: m.qiymet, s: S.QIYMET }, { v: m.mebleg, s: S.PUL }]);
     hundur[rows.length] = m.ad.length > 44 ? 32 : 18;
   });
   const ilk = 10, son = rows.length;
-  if (tip !== "protokol") {
   const cemi = r2(q.mallar.reduce((a, m) => a + m.mebleg, 0));
   rows.push([null, null, null, null, null, { v: "Cəmi", s: S.YEK_AD }, { f: `SUM(G${ilk}:G${son})`, v: cemi, s: S.YEK_DEG }]);
   rows.push([null, null, null, null, null, { v: edvEtiketi(q), s: S.YEK_AD }, { v: q.edv, s: S.YEK_DEG }]);
   rows.push([null, null, null, null, null, { v: "Yekun", s: S.YEK_AD }, { f: `G${son + 1}+G${son + 2}`, v: r2(cemi + q.edv), s: S.YEK_DEG }]);
   rows.push([], [{ v: "Yekun məbləğ (yazı ilə): " + meblegYazi(q.yekun), s: S.QALIN }]);
-  }
-  if (tip === "protokol") rows.push([]);
   if (tip === "hesab") {
     rows.push([], [{ v: "SATICININ BANK REKVİZİTLƏRİ", s: S.QALIN }]);
     for (const [k, ad] of REKV_SETRI) rows.push([{ v: `${ad}: ${(rekv && rekv[k]) || "______________________"}`, s: S.NORMAL }]);
@@ -174,7 +166,7 @@ function aktSehifesi(q, sat, alc, tip, rekv) {
     rows.push(row);
   }
   const iri = rows.map((r) => Array.from(r, (c) => (c == null || c === "" ? c : typeof c !== "object" ? { v: c, s: SA[0] } : { ...c, s: SA[c.s || 0] })));
-  return { ad: tip === "protokol" ? "Protokol" : tip === "hesab" ? "Hesab-faktura" : "TTA", rows: iri, eni: tip === "protokol" ? [5, 44, 13, 20, 14, 18, 2] : [5, 44, 15, 12, 10, 14, 14], hundur: { ...hundur, [b + 1]: 58 }, sigdir: true,
+  return { ad: tip === "protokol" ? "Protokol" : tip === "hesab" ? "Hesab-faktura" : "TTA", rows: iri, eni: [5, 44, 15, 12, 10, 14, 14], hundur: { ...hundur, [b + 1]: 58 }, sigdir: true,
     birlesdir: ["A1:C1", "A3:G3", "A5:G8", `A${b + 1}:C${b + 1}`, `D${b + 1}:G${b + 1}`] };
 }
 
