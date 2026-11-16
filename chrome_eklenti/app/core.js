@@ -189,8 +189,27 @@ function esasCumle(q) {
   let es = (q.esas || "").trim();
   if (!es) return "";
   for (const [desen, evez] of AYAR.esas_evezlemeleri || []) es = es.replace(new RegExp(desen), evez);
-  if (!/əsasən\s*$/.test(es)) es += " əsasən";
-  return es + " ";
+  es = es.replace(/\s*əsasən\s*$/, "").replace(/[\s.,;:]+$/, "");
+  es = es.replace(/(\d{4})\s*-?\s*(?:c[iıuü])\s+il\b/g, (a, il) => `${il}-${_ilSonluq(il)} il`);  // 2024 ci il -> 2024-cü il
+  es = es.replace(/([A-Za-zƏəÖöÜüĞğŞşÇçİıI]+)$/, (a) => _yonluk(a));  // müqavilə -> müqaviləyə
+  return es + (/(üzrə|görə|əsasında|uyğun olaraq)$/i.test(es) ? " " : " əsasən ");
+}
+// İlin sıra sonluğu: 2024 -> cü, 2026 -> cı
+function _ilSonluq(il) {
+  const n = +il, s = n % 10, o = Math.floor(n / 10) % 10;
+  if (s) return ["", "ci", "ci", "cü", "cü", "ci", "cı", "ci", "ci", "cu"][s];
+  if (o) return ["", "cu", "ci", "cu", "cı", "ci", "cı", "ci", "ci", "cı"][o];
+  return n % 1000 === 0 ? "ci" : "cü";
+}
+// «əsasən» sözündən əvvəlki söz yönlük halda olmalıdır (yalnız tanınan sənəd sözləri)
+const _YONLUK_SOZ = ["müqavilə", "akt", "razılaşma", "sifariş", "hesab", "protokol", "əlavə", "faktura", "hesab-faktura", "qaimə", "invoys",
+  "saziş", "məktub", "ərizə", "tələbnamə", "smeta", "əmr", "sərəncam", "qərar", "kontrakt", "spesifikasiya", "tapşırıq", "müraciət"];
+function _yonluk(soz) {
+  const k = azLower(soz);
+  if (!_YONLUK_SOZ.includes(k)) return soz;
+  const sait = [...k].filter((c) => "aıoueəiöü".includes(c)).pop(), qalin = "aıou".includes(sait);
+  const ek = ("aıoueəiöü".includes(k.slice(-1)) ? "y" : "") + (qalin ? "a" : "ə");
+  return soz + (soz === soz.toUpperCase() && soz.length > 1 ? ek.toUpperCase() : ek);
 }
 const _tip = (t) => (t === true ? "protokol" : t || "tta");  // köhnə boolean çağırışlarla uyğunluq
 function aktBasliq(t) { t = _tip(t); return t === "protokol" ? AYAR.protokol_basliq : t === "hesab" ? AYAR.hesab_basliq : "TƏHVİL-TƏSLİM AKTI"; }
