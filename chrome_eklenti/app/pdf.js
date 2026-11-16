@@ -145,7 +145,7 @@ async function aktPdf(q, sat, alc, tip, rekv) {
   }
   y += 22;
   const yaz = _sar("Yekun məbləğ (yazı ilə): " + meblegYazi(q.yekun), 10, true, _PEN);
-  const iddia = tip === "hesab" || !AYAR.iddia_cumlesi ? [] : _sar(AYAR.iddia_cumlesi, SZ, false, _PEN);
+  const iddia = iddiaMetni(tip) ? _sar(iddiaMetni(tip), SZ, false, _PEN) : [];
   const lazim = yaz.length * 13 + iddia.length * 13 + 20;
   if (y + lazim > _PH[1] - _PASAGI) yeni();
   for (const t of yaz) { sh.yaz(_PSOL, y, t, 10, true); y += 13; }

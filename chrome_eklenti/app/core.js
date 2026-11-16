@@ -4,7 +4,7 @@ const REYESTR_URL = ETAX + "/api/po/authless/public/v1/authless/findTaxpayer";
 const AYAR_DEF = {
   sheher: "Bakı şəhəri",
   giris_sablon: "Biz, aşağıda imza edənlər, Satıcı {satici} (VÖEN {satici_voen}) və Alıcı {alici} (VÖEN {alici_voen}), bu aktı tərtib etdik ona görə ki, {esas}aşağıda göstərilən mallar Satıcı tərəfindən təhvil verilmiş, Alıcı tərəfindən qəbul edilmişdir.",
-  iddia_cumlesi: "",
+  iddia_cumlesi: "Akt iki nüsxədə tərtib edilmişdir, hər tərəfdə bir nüsxə saxlanılır.",
   protokol_yarat: true,
   protokol_basliq: "QİYMƏT RAZILAŞDIRMA PROTOKOLU",
   protokol_giris_sablon: "",
@@ -223,6 +223,8 @@ function _yonluk(soz) {
 }
 const _tip = (t) => (t === true ? "protokol" : t || "tta");  // köhnə boolean çağırışlarla uyğunluq
 function aktBasliq(t) { t = _tip(t); return t === "protokol" ? AYAR.protokol_basliq : t === "hesab" ? AYAR.hesab_basliq : "TƏHVİL-TƏSLİM AKTI"; }
+// Son cümlə: protokolda «Akt» sözü «Protokol» olur, hesab-fakturada yazılmır
+function iddiaMetni(tip) { tip = _tip(tip); const t = AYAR.iddia_cumlesi || ""; return tip === "hesab" ? "" : tip === "protokol" ? t.replace(/^Akt\b/, "Protokol") : t; }
 function girisMetni(q, sat, alc, tip) {
   tip = _tip(tip);
   let sablon = AYAR.giris_sablon;
