@@ -7,7 +7,7 @@ const AYAR_DEF = {
   iddia_cumlesi: "Akt iki nüsxədə tərtib edilmişdir, hər tərəfdə bir nüsxə saxlanılır.",
   protokol_yarat: true,
   protokol_basliq: "QİYMƏT RAZILAŞDIRMA PROTOKOLU",
-  protokol_giris_sablon: "",
+  protokol_giris_sablon: "Biz, aşağıda imza edənlər, Satıcı {satici} (VÖEN {satici_voen}) və Alıcı {alici} (VÖEN {alici_voen}), bu protokolu ona dair tərtib etdik ki, {esas}tərəflər aşağıda göstərilən malların (işlərin, xidmətlərin) qiymətləri barədə razılığa gəlmişlər.",
   hesab_basliq: "HESAB-FAKTURA",
   hesab_giris_sablon: "Satıcı {satici} (VÖEN {satici_voen}) tərəfindən Alıcı {alici} (VÖEN {alici_voen}) üçün {esas}aşağıda göstərilən mallar üzrə hesab-faktura təqdim edilir. Ödənişin aşağıda göstərilən bank rekvizitlərinə köçürülməsi xahiş olunur.",
   direktor_duzelis: {},
