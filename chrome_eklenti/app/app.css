@@ -18,6 +18,7 @@ nav button.aktiv{background:#fff;color:#1f4e8c}
 button{font:inherit;cursor:pointer;border-radius:5px;border:1px solid #b7c4d6;background:#f3f6fb;padding:3px 9px}
 button.esas{display:block;width:100%;margin-top:8px;background:#1f4e8c;color:#fff;border-color:#1f4e8c;padding:7px;font-weight:600;font-size:13px}button.esas:disabled{opacity:.5;cursor:default}
 button.lnk{border:0;background:none;color:#1f4e8c;text-decoration:underline;padding:0 8px 0 0;font-size:12px}
+[hidden]{display:none!important}
 .chap{margin-top:6px;font-size:12px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 #zolaq{height:6px;background:#dde5f0;border-radius:99px;overflow:hidden;margin-top:8px}#dolu{height:100%;width:0;background:#22a05a;transition:width .2s}
 #dayan{margin-top:6px}
