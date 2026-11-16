@@ -224,7 +224,7 @@ function _yonluk(soz) {
 const _tip = (t) => (t === true ? "protokol" : t || "tta");  // köhnə boolean çağırışlarla uyğunluq
 function aktBasliq(t) { t = _tip(t); return t === "protokol" ? AYAR.protokol_basliq : t === "hesab" ? AYAR.hesab_basliq : "TƏHVİL-TƏSLİM AKTI"; }
 // Son cümlə: protokolda «Akt» sözü «Protokol» olur, hesab-fakturada yazılmır
-function iddiaMetni(tip) { tip = _tip(tip); const t = AYAR.iddia_cumlesi || ""; return tip === "hesab" ? "" : tip === "protokol" ? t.replace(/^Akt\b/, "Protokol") : t; }
+function iddiaMetni(tip) { tip = _tip(tip); const t = AYAR.iddia_cumlesi || ""; return tip === "hesab" ? "" : tip === "protokol" ? t.replace(/^Akt\b/, "Qiymət razılaşdırma protokolu") : t; }
 function girisMetni(q, sat, alc, tip) {
   tip = _tip(tip);
   let sablon = AYAR.giris_sablon;
