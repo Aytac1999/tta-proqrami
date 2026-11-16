@@ -236,7 +236,7 @@
     isleyir = b; dayan = false;
     hamisi(".esas").forEach((x) => (x.disabled = b));
     $("#dayan").hidden = !b; $("#zolaq").hidden = !b;
-    if (b) { xeberler.length = 0; $("#dolu").style.width = "0"; $("#chap-qutu").hidden = true; }
+    if (b) { xeberler.length = 0; DUZELISLER.clear(); $("#dolu").style.width = "0"; $("#chap-qutu").hidden = true; }
   }
   $("#dayan").addEventListener("click", () => { dayan = true; LOG("Dayandırılır …"); });
 
@@ -262,7 +262,7 @@
     if (isleyir || kilitli) return;
     icaze = papkaVar ? await KOPRU("papka_icaze") : false;  // klikdən dərhal sonra: icazə sorğusu istifadəçi hərəkətinə bağlıdır
     mesgul(true); netice([["", "İşləyir …"]]);
-    try { await is(); if (xeberler.length) $("#netice").innerHTML += `<p class="x">Diqqət (${xeberler.length}): ${_e(xeberler.slice(0, 3).join(" · "))}${xeberler.length > 3 ? " …" : ""}</p>`; }
+    try { await is(); if (DUZELISLER.size) $("#netice").innerHTML += `<p class="ok">Yazı düzəlişi (${DUZELISLER.size}):</p>` + [...DUZELISLER].slice(0, 20).map((t) => `<p>${_e(t)}</p>`).join("") + (DUZELISLER.size > 20 ? "<p>…</p>" : ""); if (xeberler.length) $("#netice").innerHTML += `<p class="x">Diqqət (${xeberler.length}): ${_e(xeberler.slice(0, 3).join(" · "))}${xeberler.length > 3 ? " …" : ""}</p>`; }
     catch (e) { netice([["x", e instanceof SessiyaXetasi ? e.message : "Xəta: " + (e && e.message || e)]]); }
     mesgul(false);
   }

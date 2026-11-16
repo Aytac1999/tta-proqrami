@@ -185,13 +185,16 @@ async function teref(voen, adQaime) {
   if (!direktor && rol === "Fərdi Sahibkar") direktor = soyadAdAta(ad);
   return { voen, ad: full, rol, direktor };
 }
+const DUZELISLER = new Set();  // avtomatik yazı düzəlişləri (nəticədə göstərilir)
 function esasCumle(q) {
   let es = (q.esas || "").trim();
   if (!es) return "";
+  const _ilk = es.replace(/\s*əsasən\s*$/, "").replace(/[\s.,;:]+$/, "");
   for (const [desen, evez] of AYAR.esas_evezlemeleri || []) es = es.replace(new RegExp(desen), evez);
   es = es.replace(/\s*əsasən\s*$/, "").replace(/[\s.,;:]+$/, "");
   es = es.replace(/(\d{4})\s*-?\s*(?:c[iıuü])\s+il\b/g, (a, il) => `${il}-${_ilSonluq(il)} il`);  // 2024 ci il -> 2024-cü il
   es = es.replace(/([A-Za-zƏəÖöÜüĞğŞşÇçİıI]+)$/, (a) => _yonluk(a));  // müqavilə -> müqaviləyə
+  if (es !== _ilk) DUZELISLER.add(`${(q.seriya || "") + (q.nomre || "")}: «${_ilk}» → «${es}»`);
   return es + (/(üzrə|görə|əsasında|uyğun olaraq)$/i.test(es) ? " " : " əsasən ");
 }
 // İlin sıra sonluğu: 2024 -> cü, 2026 -> cı
