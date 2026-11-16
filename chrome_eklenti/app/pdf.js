@@ -116,7 +116,7 @@ async function aktPdf(q, sat, alc, tip, rekv) {
     y += h;
   };
   yeni();
-  sh.yaz(_PSOL, y + 10, AYAR.sheher, 10, true); sh.yazSag(sag, y + 10, q.tarix, 10, true); y += 34;
+  sh.yaz(_PSOL, y + 10, AYAR.sheher, 10, true); sh.yazSag(sag, y + 10, q.tarix, 10, true); y += 50;
   sh.yazOrta(_PH[0] / 2, y, `${bas} № ${no}`, 14, true); y += 26;
   for (const t of _sar(girisMetni(q, sat, alc, tip), SZ, false, _PEN)) { sh.yaz(_PSOL, y, t, SZ, false); y += 13; }
   y += 12;
