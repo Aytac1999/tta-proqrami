@@ -319,14 +319,15 @@ function qaimeCevir(d, istiqamet, ek) {
   const sn = d.serialNumber || "";
   const mallar = (d.items || []).map((it, i) => {
     const cost = r2(num(it.cost));
-    const edv = num(it.vat18) > 0 ? r2(cost * 0.18) : 0;
+    const aksiz = r2(num(it.excise)), yol = r2(num(it.roadTax));
+    const edv = num(it.vat18) > 0 ? r2(num(it.vat18) * 0.18) : 0;  // ƏDV bazasına aksiz də daxildir
     const olcu = (((it.unitFromDict || {}).name || {}).az) || it.unit || "";
     return { sira: i + 1, ad: (it.productName || "").split(/\s+/).filter(Boolean).join(" "),
       kod: (it.productGroup || {}).code || "", olcu, miqdar: num(it.quantity), qiymet: num(it.pricePerUnit),
-      mebleg: cost, edv, yekun: r2(cost + edv), sebeb: qaytarmaSebebi(it) };
+      mebleg: cost, aksiz, yol, edv, yekun: r2(cost + aksiz + edv + yol), sebeb: qaytarmaSebebi(it) };
   });
   const yekun = r2(num(d.amount)), edv = r2(num(d.vat)), cemi = r2(yekun - edv);
-  const toplam = r2(mallar.reduce((a, m) => a + m.mebleg, 0));
+  const toplam = r2(mallar.reduce((a, m) => a + m.mebleg + m.aksiz + m.yol, 0));  // məbləğ + aksiz + yol vergisi
   if (Math.abs(toplam - cemi) > 0.02) LOG(`  ! ${sn}: mal sətirlərinin cəmi (${toplam}) ilə qaimənin ƏDV-siz məbləği (${cemi}) üst-üstə düşmür`);
   const s = d.sender || {}, r = d.receiver || {};
   return { seriya: sn.slice(0, 6), nomre: sn.slice(6), tarix: tarixCevir(d.createdAt),
