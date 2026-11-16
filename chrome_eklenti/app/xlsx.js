@@ -118,16 +118,16 @@ function terkibSehifeleri(qaimeler) {
   const bas = ["Qaimə (seriya+nömrə)", "Qaimə tarixi", "İstiqamət", "Status", "Qaimənin tipi", "Vəziyyəti (Cari/Düzəliş)", "Versiya №",
     "Göndərildi", "Təsdiqləndi (son)", "Düzəliş edilib?", "Düzəliş tarixi", "Düzəliş edən",
     "Əlaqəli qaimələr (geri qaytarma / əsas qaimə)", "Göndərən VÖEN", "Göndərən adı", "Qəbul edən VÖEN", "Qəbul edən adı", "Əsas",
-    "Əlavə qeydlər", "Sıra №", "Malın adı", "Malın kodu", "Ölçü vahidi", "Miqdar", "Vahidin qiyməti", "Məbləğ (ƏDV-siz)", "ƏDV",
+    "Əlavə qeydlər", "Sıra №", "Malın adı", "Malın kodu", "Ölçü vahidi", "Miqdar", "Vahidin qiyməti", "Məbləğ (ƏDV-siz)", "Aksiz", "Yol vergisi", "ƏDV",
     "Yekun məbləğ", "Qaytarma səbəbi", "Ləğv tarixi", "Avans qaiməsi", "Təqdimedilmə qaiməsi"];
-  const eni = [20, 12, 12, 14, 16, 11, 9, 17, 17, 14, 17, 28, 50, 14, 34, 14, 34, 40, 24, 7, 50, 14, 10, 10, 12, 14, 12, 14, 18, 26, 30, 30];
+  const eni = [20, 12, 12, 14, 16, 11, 9, 17, 17, 14, 17, 28, 50, 14, 34, 14, 34, 40, 24, 7, 50, 14, 10, 10, 12, 14, 11, 11, 12, 14, 18, 26, 30, 30];
   const bs = (a) => a.map((v) => ({ v, s: S.TBASLIQ }));
   const ana = [bs(bas)];
   for (const q of qaimeler) for (const m of q.mallar) {
     ana.push([q.seriya + q.nomre, q.tarix, q.istiqamet || "", q.status || "", q.tip || "", q.novu || "", q.versiya_no == null ? "" : q.versiya_no,
       q.gonderildi || "", q.tesdiqlendi || "", q.duzelis || "", q.duzelis_tarixi || "", q.duzelis_eden || "", q.elaqeli || "",
       q.gonderen_voen, q.gonderen_ad, q.qebul_voen, q.qebul_ad, q.esas, q.esas2 || "", m.sira, m.ad, m.kod, m.olcu, m.miqdar,
-      { v: m.qiymet, s: S.TQIYMET }, { v: m.mebleg, s: S.TPUL }, { v: m.edv, s: S.TPUL }, { v: m.yekun, s: S.TPUL }, m.sebeb || "", q.legv || "", q.bagli_avans || "", q.bagli_normal || ""]);
+      { v: m.qiymet, s: S.TQIYMET }, { v: m.mebleg, s: S.TPUL }, { v: m.aksiz || 0, s: S.TPUL }, { v: m.yol || 0, s: S.TPUL }, { v: m.edv, s: S.TPUL }, { v: m.yekun, s: S.TPUL }, m.sebeb || "", q.legv || "", q.bagli_avans || "", q.bagli_normal || ""]);
   }
   const sh = [{ ad: "Qaimə tərkibi", rows: ana, eni, dondur: true, suzgec: bas.length }];
   return sh;
