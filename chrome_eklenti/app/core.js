@@ -183,7 +183,14 @@ async function teref(voen, adQaime) {
   const rol = /(oğlu|qızı)$/.test(kicik) ? "Fərdi Sahibkar" : "Direktor";
   let direktor = (AYAR.direktor_duzelis || {})[voen] || (r && r.direktor) || "";
   if (!direktor && rol === "Fərdi Sahibkar") direktor = soyadAdAta(ad);
-  return { voen, ad: full, rol, direktor };
+  return { voen, ad: formaDuzelt(full), rol, direktor };
+}
+// Dırnaqdan sonrakı təşkilati-hüquqi forma eyni yazılsın: MƏHDUD MƏSULİYYƏTLİ CƏMİYYƏTİ -> Məhdud Məsuliyyətli Cəmiyyəti
+function formaDuzelt(ad) {
+  const i = ad.lastIndexOf('"');
+  if (i <= 0 || i === ad.length - 1) return ad;
+  const basHerf = (w) => { const k = azLower(w); return (k[0] === "i" ? "İ" : k[0] === "ı" ? "I" : k[0].toUpperCase()) + k.slice(1); };
+  return ad.slice(0, i + 1) + ad.slice(i + 1).replace(/[^\s]+/g, (w) => (/^[^\d]+$/.test(w) ? basHerf(w) : w));
 }
 const DUZELISLER = new Set();  // avtomatik yazı düzəlişləri (nəticədə göstərilir)
 function esasCumle(q) {
