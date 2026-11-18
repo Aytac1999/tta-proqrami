@@ -92,7 +92,9 @@ function qaimeQrupla(setirler) {
   return { qaimeler: [...qs.values()], xeta };
 }
 function qaimeSetiri(m, vahidKodu) {
-  const cost = _r(m.miq * m.qiy), excise = _r(cost * m.aks / 100), baza = _r(cost + excise);
+  // e-taxes sətir məbləğini miqdar × qiymət kimi (yuvarlaqlaşdırmadan) saxlayır; ƏDV bazası eyni olmalıdır, yoxsa cəmi uyğunsuz çıxır
+  const _r6 = (x) => Math.round((x + Number.EPSILON) * 1e6) / 1e6;
+  const cost = _r6(m.miq * m.qiy), excise = _r(cost * m.aks / 100), baza = _r6(cost + excise);
   return {
     productName: m.ad, unit: m.vahid, quantity: m.miq, pricePerUnit: m.qiy, cost,
     exciseRate: m.aks ? m.aks : null, excise,
