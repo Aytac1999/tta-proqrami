@@ -9,7 +9,7 @@ const AYAR_DEF = {
   protokol_basliq: "QİYMƏT RAZILAŞDIRMA PROTOKOLU",
   protokol_giris_sablon: "Biz, aşağıda imza edənlər, Satıcı {satici} (VÖEN {satici_voen}) və Alıcı {alici} (VÖEN {alici_voen}), bu protokolu ona dair tərtib etdik ki, {esas}tərəflər aşağıda göstərilən malların (işlərin, xidmətlərin) qiymətləri barədə razılığa gəlmişlər.",
   hesab_basliq: "HESAB-FAKTURA",
-  hesab_giris_sablon: "Satıcı {satici} (VÖEN {satici_voen}) tərəfindən Alıcı {alici} (VÖEN {alici_voen}) üçün {esas}aşağıda göstərilən mallar üzrə hesab-faktura təqdim edilir. Ödənişin aşağıda göstərilən bank rekvizitlərinə köçürülməsi xahiş olunur.",
+  hesab_giris_sablon: "Satıcı {satici} (VÖEN {satici_voen}) tərəfindən {esas}aşağıda göstərilən mallar üzrə hesab-faktura təqdim edilir. Ödənişin aşağıda göstərilən bank rekvizitlərinə köçürülməsi xahiş olunur.",
   direktor_duzelis: {},
   esas_evezlemeleri: [["müqaviləsi\\s*$", "müqaviləsinə"]],
   tip_adlari: {},
@@ -234,6 +234,8 @@ function girisMetni(q, sat, alc, tip) {
   return sablon.replace(/\{(\w+)\}/g, (a, k) => (k in d ? d[k] : a));
 }
 // Hesab-faktura üçün satıcının bank rekvizitləri (istifadəçi özü daxil edir): {"VÖEN" və ya "*": {ad, kod, bvoen, mh, swift, hesab}}
+let DIREKTORSUZ = false;  // true: imza blokunda yalnız şirkət adı, direktor sətri yoxdur
+const dirSetri = (t) => (DIREKTORSUZ ? "" : `${t.rol}: ${t.direktor || "______________________"}`);
 const REKV_SETRI = [["ad", "Bank"], ["kod", "Bank kodu"], ["bvoen", "Bankın VÖEN-i"], ["mh", "Müxbir hesab (M/H)"], ["swift", "SWIFT"], ["hesab", "Hesab nömrəsi (IBAN)"]];
 async function rekvizitler() { return (await KOPRU("get", { key: "rekvizitler" })) || {}; }
 function rekvizitSec(dict, voen) { return dict[voen] || dict["*"] || null; }

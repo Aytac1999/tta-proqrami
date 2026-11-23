@@ -108,9 +108,21 @@ function qaimeGovdesi(q, ad, serial, vahidler) {
     kind: q.kind,
     receiver: { tin: q.voen, pin: null, passportSerialNumber: null, name: ad, objectName: q.obyekt || "", objectCode: null },
     resaleType: null, serialNumber: serial, invoiceComment: q.esas, invoiceComment2: "", type: "current",
-    items: q.mallar.map((m) => qaimeSetiri(m, vahidler[m.vahid.toLowerCase()])),
+    items: q.mallar.map((m) => {
+      const kod = vahidTap(vahidler, m.vahid);  // siyahıda varsa rəsmi ad + kod; yoxdursa yazıldığı kimi, kodsuz
+      const ad = kod === undefined ? m.vahid : (Object.keys(vahidler).find((k) => vahidler[k] === kod) || m.vahid);
+      return qaimeSetiri({ ...m, vahid: ad }, kod === undefined ? null : kod);
+    }),
     vehicleRegistrationNumber: "", senderObjectName: "", senderObjectCode: "",
   };
+}
+// Yazılmış ölçü vahidi siyahıda tapılır (böyük/kiçik hərf, tez-tez rast gəlinən yazılışlar); tapılmasa undefined
+const _VAH_ALIAS = { kg: "kq", kiloqram: "kq", qram: "q", gram: "q", gr: "q", ton: "t", tonn: "t", metr: "m", litr: "l", ltr: "l",
+  "kv.m": "m2", "m²": "m2", kvm: "m2", "kub.m": "m3", "m³": "m3", "əd": "ədəd", "əd.": "ədəd", "ədd": "ədəd", "ədəd.": "ədəd", eded: "ədəd", pcs: "ədəd", "шт": "ədəd" };
+function vahidTap(vah, s) {
+  const k = String(s || "").toLowerCase().trim();
+  if (vah[k] !== undefined) return vah[k];
+  const a = _VAH_ALIAS[k]; return a ? vah[a] : undefined;
 }
 async function vahidSiyahisi(et) {
   const r = await et.istek("GET", "/api/po/dictionary/public/v1/units");

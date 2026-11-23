@@ -157,17 +157,17 @@ function aktSehifesi(q, sat, alc, tip, rekv) {
     rows.push([], [], []);
   } else rows.push([{ v: iddiaMetni(tip), s: S.NORMAL }], [], [], []);
   const b = rows.length + 1;
-  const blok = (tr, bas) => [bas, tr.ad, `VÖEN: ${tr.voen}`, "", `${tr.rol}: ${tr.direktor}`, "", "", "", "İmza: ______________________", "M.Y."];
+  const blok = (tr, bas) => [bas, tr.ad, `VÖEN: ${tr.voen}`, "", DIREKTORSUZ ? "" : `${tr.rol}: ${tr.direktor}`, "", "", "", "İmza: ______________________", "M.Y."];
   const sb = blok(sat, "SATICI"), ab = blok(alc, "ALICI");
   for (let k = 0; k < 10; k++) {
     const row = [];
     row[0] = k === 1 ? { v: sb[k], s: S.QALIN_SAR } : k === 0 || k === 9 ? { v: sb[k], s: S.QALIN } : sb[k];
-    row[3] = k === 1 ? { v: ab[k], s: S.QALIN_SAR } : k === 0 || k === 9 ? { v: ab[k], s: S.QALIN } : ab[k];
+    if (tip !== "hesab") row[3] = k === 1 ? { v: ab[k], s: S.QALIN_SAR } : k === 0 || k === 9 ? { v: ab[k], s: S.QALIN } : ab[k];
     rows.push(row);
   }
   const iri = rows.map((r) => Array.from(r, (c) => (c == null || c === "" ? c : typeof c !== "object" ? { v: c, s: SA[0] } : { ...c, s: SA[c.s || 0] })));
   return { ad: tip === "protokol" ? "Protokol" : tip === "hesab" ? "Hesab-faktura" : "TTA", rows: iri, eni: [5, 44, 15, 12, 10, 14, 14], hundur: { ...hundur, [b + 1]: 58 }, sigdir: true,
-    birlesdir: ["A1:C1", "A3:G3", "A5:G8", `A${b + 1}:C${b + 1}`, `D${b + 1}:G${b + 1}`] };
+    birlesdir: ["A1:C1", "A3:G3", "A5:G8", `A${b + 1}:C${b + 1}`, ...(tip === "hesab" ? [] : [`D${b + 1}:G${b + 1}`])] };
 }
 
 

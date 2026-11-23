@@ -316,8 +316,9 @@
     const sets = qaimeler.reduce((a, q) => a + q.mallar.length, 0);
     if ($("#qaime-yoxla").checked) return netice([["ok", `Yoxlama keçdi: ${qaimeler.length} qaimə, ${sets} mal sətri.`], ["", "Qaralama yaratmaq üçün «Əvvəl yalnız yoxla» işarəsini götürüb yenidən basın."]]);
     const et = new ETaxes(), vah = await vahidSiyahisi(et), sonuc = [];
-    for (const q of qaimeler) for (const m of q.mallar) if (!vah[m.vahid.toLowerCase()]) xeta.push(`Sətir ${m.no}: «${m.vahid}» ölçü vahidi e-taxes siyahısında yoxdur.`);
-    if (xeta.length) return netice([["x", "Heç nə yaradılmadı:"], ...xeta.slice(0, 15).map((t) => ["x", t])]);
+    const yeniVahid = new Set();
+    for (const q of qaimeler) for (const m of q.mallar) if (vahidTap(vah, m.vahid) === undefined) yeniVahid.add(m.vahid);
+    const vahidXeb = yeniVahid.size ? [["", `Diqqət: bu ölçü vahidləri e-taxes siyahısında yoxdur, yazıldığı kimi göndərilir: ${[...yeniVahid].join(", ")}`]] : [];
     for (let i = 0; i < qaimeler.length; i++) {
       if (dayan) break;
       const q = qaimeler[i]; progress(i, qaimeler.length); netice([["", `Yaradılır … ${i}/${qaimeler.length}`], ...sonuc]);
@@ -333,7 +334,7 @@
         sonuc.push(["ok", `${q.key} → ${serial} (${q.kind === "advanceInvoice" ? "avans, " : ""}${q.mallar.length} mal) qaralama yaradıldı.`]);
       } catch (e) { if (e instanceof SessiyaXetasi) throw e; sonuc.push(["x", `${q.key}: ${e.message}`]); }
     }
-    netice([["", "Bitdi. Qaralamaları e-taxes-də «Qaralamalar» bölməsində yoxlayıb özünüz göndərin."], ...sonuc]);
+    netice([["", "Bitdi. Qaralamaları e-taxes-də «Qaralamalar» bölməsində yoxlayıb özünüz göndərin."], ...vahidXeb, ...sonuc]);
   }));
 
   $("#bas-tta").addEventListener("click", () => isle("tta", async () => {
@@ -342,6 +343,7 @@
     if (o.dan > o.ya) return netice([["x", "Başlanğıc tarix son tarixdən böyük ola bilməz."]]);
     const tta = o.f("tta"), prot = o.f("protokol"), hes = o.f("hesab");
     if (!tta && !prot && !hes) return netice([["x", "Ən azı bir sənəd növünü seçin."]]);
+    DIREKTORSUZ = o.f("dirsiz");
     const fmtSec = ($("[data-f=format]", $("#b-tta")) || {}).value || "pdf";
     const excelVar = fmtSec !== "pdf", pdfVar = fmtSec !== "excel";
     if (hes) {
@@ -363,7 +365,7 @@
     for (const x of q) {
       const sat = await teref(x.gonderen_voen, x.gonderen_ad), alc = await teref(x.qebul_voen, x.qebul_ad);
       const no = faylAdi(x, sat, alc);
-      if (!sat.direktor || !alc.direktor) direktorsuz.push(x.seriya + x.nomre);
+      if (!DIREKTORSUZ && (!sat.direktor || !alc.direktor)) direktorsuz.push(x.seriya + x.nomre);
       const yaz = async (ad, tip, rk) => {
         if (excelVar) fayllar.push({ ad: `${ad}_${no}.xlsx`, data: await xlsxYarat([aktSehifesi(x, sat, alc, tip, rk)]), mime: XLSX_MIME });
         if (pdfVar) fayllar.push({ ad: `${ad}_${no}.pdf`, data: await aktPdf(x, sat, alc, tip, rk), mime: "application/pdf" });

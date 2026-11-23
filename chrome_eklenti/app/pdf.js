@@ -3,6 +3,7 @@ const _PF = {"r":{"b64":"AAEAAAALAIAAAwAwT1MvMn2F/NkAAAE4AAAAYGNtYXCq6lK2AAAIuAA
 
 // ---- PDF yaradıcı: TTA / protokol / hesab-faktura birbaşa PDF faylı kimi (çap pəncərəsi lazım deyil)
 const _PH = [595.28, 841.89], _PSOL = 40, _PEN = 515.28, _PYUXARI = 48, _PASAGI = 52;
+let _HV = _PH[1], _S = 1;  // virtual səhifə hündürlüyü və miqyas (bir səhifəyə sığdırmaq üçün)
 const _b64u8 = (b) => { const s = atob(b), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; };
 const _pg = (b) => (b ? _PF.b : _PF.r);
 const _ginf = (f, ch) => f.cm[ch.codePointAt(0)] || f.cm[63] || f.cm[32];
@@ -27,7 +28,7 @@ function _sar(s, size, bold, en) {  // sözlərə görə sətirlərə böl
 }
 class _Sehife {
   constructor() { this.c = []; }
-  _y(y) { return (_PH[1] - y).toFixed(2); }
+  _y(y) { return (_HV - y).toFixed(2); }
   yaz(x, y, s, size, bold) {
     s = String(s == null ? "" : s).normalize("NFC"); if (!s) return;
     const f = _pg(bold); let hex = "";
@@ -37,7 +38,7 @@ class _Sehife {
   yazSag(sag, y, s, size, bold) { this.yaz(sag - _olc(s, size, bold), y, s, size, bold); }
   yazOrta(orta, y, s, size, bold) { this.yaz(orta - _olc(s, size, bold) / 2, y, s, size, bold); }
   dort(x, y, w, h, fill) {  // doldurulmuş + haşiyəli düzbucaq
-    this.c.push(`${fill ? fill + " rg " : ""}0.53 0.59 0.67 RG 0.6 w ${x.toFixed(2)} ${(_PH[1] - y - h).toFixed(2)} ${w.toFixed(2)} ${h.toFixed(2)} re ${fill ? "B" : "S"}`);
+    this.c.push(`${fill ? fill + " rg " : ""}0.53 0.59 0.67 RG 0.6 w ${x.toFixed(2)} ${(_HV - y - h).toFixed(2)} ${w.toFixed(2)} ${h.toFixed(2)} re ${fill ? "B" : "S"}`);
     this.c.push("0 g");
   }
   xett(x1, y1, x2, y2) { this.c.push(`0 G 0.6 w ${x1.toFixed(2)} ${this._y(y1)} m ${x2.toFixed(2)} ${this._y(y2)} l S`); }
@@ -78,7 +79,7 @@ async function _pdfYig(sehifeler) {
   const kids = [];
   let n = 13;
   for (const sh of sehifeler) {
-    const cu = str(sh.c.join("\n")), z = await _flate(cu);
+    const cu = str((_S < 1 ? `${_S} 0 0 ${_S} ${((_PH[0] - _PEN * _S) / 2 - _PSOL * _S).toFixed(3)} 0 cm\n` : "") + sh.c.join("\n")), z = await _flate(cu);
     setO(n + 1, `<< ${z ? "/Filter /FlateDecode " : ""}>>`, z || cu);
     setO(n, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${_PH[0]} ${_PH[1]}] /Resources << /Font << /F1 3 0 R /F2 8 0 R >> >> /Contents ${n + 1} 0 R >>`);
     kids.push(`${n} 0 R`); n += 2;
@@ -99,6 +100,20 @@ async function _pdfYig(sehifeler) {
 }
 const _pBoz = "0.86 0.90 0.95", _pAch = "0.93 0.95 0.97";
 async function aktPdf(q, sat, alc, tip, rekv) {
+  // əvvəl normal ölçüdə; bir neçə səhifə çıxırsa, hər şey bir səhifəyə sığana qədər kiçildilir (ən çox 0,7-yə qədər)
+  let sehifeler = _aktSehifeler(q, sat, alc, tip, rekv, 1);
+  if (sehifeler.length > 1) {
+    for (let s = 0.96; s >= 0.7; s -= 0.04) {
+      const t = _aktSehifeler(q, sat, alc, tip, rekv, s);
+      if (t.length === 1) { sehifeler = t; break; }
+    }
+    if (sehifeler.length > 1) sehifeler = _aktSehifeler(q, sat, alc, tip, rekv, 1);
+  }
+  const bu = _S; const netice = await _pdfYig(sehifeler); _S = 1; _HV = _PH[1];
+  return netice;
+}
+function _aktSehifeler(q, sat, alc, tip, rekv, miqyas) {
+  _S = miqyas; _HV = _PH[1] / miqyas;
   tip = _tip(tip);
   const no = q.seriya + q.nomre, bas = aktBasliq(tip), sehifeler = [];
   let sh, y;
@@ -125,7 +140,7 @@ async function aktPdf(q, sat, alc, tip, rekv) {
     const m = q.mallar[i];
     const ad = _sar(m.ad, SZ, false, sutun[1] - 8);
     const h = Math.max(ad.length, 1) * LH + 6;
-    if (y + h > _PH[1] - _PASAGI) { yeni(); basliqCedvel(); }
+    if (y + h > _HV - _PASAGI) { yeni(); basliqCedvel(); }
     sutun.forEach((e, k) => sh.dort(x0[k], y, e, h, null));
     const by = y + 4 + SZ - 1, orta = (k) => x0[k] + sutun[k] / 2, sagK = (k) => x0[k] + sutun[k] - 4;
     sh.yazOrta(orta(0), by, String(i + 1), SZ, false);
@@ -137,7 +152,7 @@ async function aktPdf(q, sat, alc, tip, rekv) {
   }
   const cemi = q.cemi != null ? q.cemi : r2(q.mallar.reduce((a, m) => a + m.mebleg, 0));
   const yek = [["Cəmi", fmt(cemi)], [edvEtiketi(q), fmt(q.edv)], ["Yekun", fmt(q.yekun)]];
-  if (y + 3 * 17 > _PH[1] - _PASAGI) { yeni(); }
+  if (y + 3 * 17 > _HV - _PASAGI) { yeni(); }
   for (const [a, b] of yek) {
     sh.dort(x0[5], y, sutun[5], 17, _pAch); sh.dort(x0[6], y, sutun[6], 17, _pAch);
     sh.yazSag(x0[5] + sutun[5] - 4, y + 12, a, 9.5, true); sh.yazSag(x0[6] + sutun[6] - 4, y + 12, b, 9.5, true);
@@ -147,12 +162,12 @@ async function aktPdf(q, sat, alc, tip, rekv) {
   const yaz = _sar("Yekun məbləğ (yazı ilə): " + meblegYazi(q.yekun), 10, true, _PEN);
   const iddia = iddiaMetni(tip) ? _sar(iddiaMetni(tip), SZ, false, _PEN) : [];
   const lazim = yaz.length * 13 + iddia.length * 13 + 20;
-  if (y + lazim > _PH[1] - _PASAGI) yeni();
+  if (y + lazim > _HV - _PASAGI) yeni();
   for (const t of yaz) { sh.yaz(_PSOL, y, t, 10, true); y += 13; }
   for (const t of iddia) { sh.yaz(_PSOL, y, t, SZ, false); y += 13; }
   if (tip === "hesab") {
     y += 14;
-    if (y + 20 + REKV_SETRI.length * 14 > _PH[1] - _PASAGI) yeni();
+    if (y + 20 + REKV_SETRI.length * 14 > _HV - _PASAGI) yeni();
     sh.yaz(_PSOL, y, "SATICININ BANK REKVİZİTLƏRİ", 10, true); y += 15;
     for (const [k, ad] of REKV_SETRI) {
       const v = (rekv && rekv[k]) || "______________________";
@@ -161,20 +176,22 @@ async function aktPdf(q, sat, alc, tip, rekv) {
   }
   y += 28;
   const ensb = 240, xA = _PSOL, xB = _PSOL + 275;
-  const adS = _sar(sat.ad, 10, true, ensb), adA = _sar(alc.ad, 10, true, ensb);
-  const dirS = _sar(`${sat.rol}: ${sat.direktor || "______________________"}`, 10, false, ensb), dirA = _sar(`${alc.rol}: ${alc.direktor || "______________________"}`, 10, false, ensb);
-  const yuksek = 13 + Math.max(adS.length, adA.length) * 12 + 14 + 14 + Math.max(dirS.length, dirA.length) * 12 + 46 + 26;
-  if (y + yuksek > _PH[1] - _PASAGI) yeni();
+  const HES = tip === "hesab";  // hesab-fakturada yalnız satıcı
+  const adS = _sar(sat.ad, 10, true, ensb), adA = HES ? [] : _sar(alc.ad, 10, true, ensb);
+  const dsz = (t) => (DIREKTORSUZ ? [] : _sar(dirSetri(t), 10, false, ensb));
+  const dirS = dsz(sat), dirA = HES ? [] : dsz(alc);
+  const yuksek = 13 + Math.max(adS.length, adA.length) * 12 + 14 + 14 + Math.max(dirS.length, dirA.length, DIREKTORSUZ ? 0 : 1) * 12 + (DIREKTORSUZ ? 14 : 46) + 26;
+  if (y + yuksek > _HV - _PASAGI) yeni();
   const blok = (x, bas, ad, t, dir) => {
     let yy = y; sh.yaz(x, yy + 9, bas, 10, true); yy += 13;
     ad.forEach((l, k) => sh.yaz(x, yy + 9 + k * 12, l, 10, true));
     yy += Math.max(adS.length, adA.length) * 12;  // iki tərəfdə eyni hündürlük: VÖEN və direktor eyni səviyyədə
-    sh.yaz(x, yy + 9, `VÖEN: ${t.voen}`, 10, false); yy += 28;
+    sh.yaz(x, yy + 9, `VÖEN: ${t.voen}`, 10, false); yy += DIREKTORSUZ ? 14 : 28;
     for (const l of dir) { sh.yaz(x, yy + 9, l, 10, false); yy += 12; }
     return yy;
   };
-  const e1 = blok(xA, "SATICI", adS, sat, dirS), e2 = blok(xB, "ALICI", adA, alc, dirA);
+  const e1 = blok(xA, "SATICI", adS, sat, dirS), e2 = HES ? 0 : blok(xB, "ALICI", adA, alc, dirA);
   const yi = Math.max(e1, e2) + 40;
-  for (const x of [xA, xB]) { sh.yaz(x, yi, "İmza: ______________________", 10, false); sh.yaz(x, yi + 14, "M.Y.", 10, true); }
-  return _pdfYig(sehifeler);
+  for (const x of (HES ? [xA] : [xA, xB])) { sh.yaz(x, yi, "İmza: ______________________", 10, false); sh.yaz(x, yi + 14, "M.Y.", 10, true); }
+  return sehifeler;
 }
