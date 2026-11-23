@@ -656,3 +656,67 @@ async function edvEvezlesmesi({ dan, ya }, progress) {
   }
   return { bey, setirler, ygb, tapilmayan };
 }
+
+
+// ------------------------------------------------------------------ Alış aktları (find.sent + akt məzmunu)
+const AKT_API = "/api/po/invoice/public/v1/act";
+const AKT_STATUS_AZ = { approved: "Təsdiqləndi", canceled: "Ləğv edilib", waitingForSellerCancelApproval: "Satıcının ləğvi təsdiqi gözlənilir",
+  waitingForBuyerCancelApproval: "Alıcının ləğvi təsdiqi gözlənilir", approvedAttachment: "Təsdiqləndi (əlavə ilə)", cancellationRefused: "Ləğv rədd edilib" };
+const AKT_NOV_AZ = { agriculturalProductsAct: "Kənd təsərrüfatı məhsullarının qəbulu", metalProductsAct: "Metal məmulatlarının qəbulu",
+  tireProductsForDisposalAct: "Utilizasiya üçün şin məmulatlarının qəbulu", plasticProductsForDisposalAct: "Utilizasiya üçün plastik məmulatların qəbulu",
+  rawhideSupply: "Xam dərinin tədarükü", wasteOils: "İşlənmiş yağların qəbulu", act: "Digər məhsulların qəbulu" };
+const AKT_VERGI_AZ = { taxFree: "Vergidən azad olunan", vat18: "ƏDV 18%", vat0: "ƏDV 0%", exempt: "ƏDV-dən azad" };
+async function aktSiyahisi(cl, dan, ya) { // dan/ya: ISO. Bütün statuslar (yalnız "Akt siyahısı" bölməsi)
+  const yaG = new Date(ya + "T00:00:00Z"); yaG.setUTCDate(yaG.getUTCDate() + 1);
+  const yaS = yaG.toISOString().slice(0, 10).split("-").reverse().join("-");
+  const govde = {
+    sortBy: "creationDate", sortAsc: true,
+    statuses: ["approved", "waitingForSellerCancelApproval", "waitingForBuyerCancelApproval", "canceled", "approvedAttachment", "cancellationRefused"],
+    types: ["current", "corrected"], serialNumber: null, sellerFin: null, sellerName: null, productName: null, productCode: null,
+    kinds: ["agriculturalProductsAct", "metalProductsAct", "tireProductsForDisposalAct", "plasticProductsForDisposalAct", "rawhideSupply", "wasteOils", "act"],
+    creationDateFrom: `${ddmmyyyy(dan)} 00:00`, creationDateTo: `${yaS} 00:00`, amountFrom: null, amountTo: null, offset: 0, maxCount: 100, phoneNumber: null,
+  };
+  const netice = [];
+  for (;;) {
+    const r = await cl.istek("POST", AKT_API + "/find.sent", { json: govde });
+    if (r.status >= 400) throw new Error("akt siyahısı alınmadı (" + r.status + ")");
+    const j = JSON.parse(r.text);
+    const sira = j.acts || [];
+    netice.push(...sira);
+    if (!j.hasMore || !sira.length) break;
+    govde.offset += sira.length;
+  }
+  return netice;
+}
+async function aktlariTopla({ dan, ya }, progress) {
+  const cl = new ETaxes();
+  const sira = await aktSiyahisi(cl, dan, ya);
+  LOG(`Alış aktları (${ddmmyyyy(dan)} - ${ddmmyyyy(ya)}): ${sira.length} ədəd`);
+  const aktlar = new Array(sira.length).fill(null), ugursuz = [];
+  let nov = 0, hazir = 0;
+  const isle = async (i) => {
+    const x = sira[i];
+    const r = await cl.istek("GET", `${AKT_API}/${x.id}`, { params: { sourceSystem: x.sourceSystem || "avis" } });
+    if (r.status >= 400) throw new Error("status " + r.status);
+    const d = JSON.parse(r.text);
+    aktlar[i] = { ...x, ...d, status: d.status || x.status, kind: d.kind || x.kind, _items: d.items || [] };
+    progress && progress(++hazir, sira.length);
+  };
+  const isci = async () => {
+    while (!DAYANDI()) {
+      const i = nov++;
+      if (i >= sira.length) return;
+      try { await isle(i); }
+      catch (e) { if (e instanceof SessiyaXetasi) throw e; LOG(`! ${sira[i].serialNumber}: götürülmədi (${String(e.message).slice(0, 90)})`); ugursuz.push(i); }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(6, sira.length) }, isci));
+  if (ugursuz.length && !DAYANDI()) {
+    LOG(`${ugursuz.length} akt götürülə bilmədi. 15 saniyə sonra bir də cəhd edirəm...`);
+    await gozle(15000);
+    for (const i of ugursuz.splice(0)) {
+      try { await isle(i); } catch (e) { if (e instanceof SessiyaXetasi) throw e; LOG(`! ${sira[i].serialNumber}: yenə götürülmədi`); ugursuz.push(i); }
+    }
+  }
+  return { aktlar: aktlar.filter(Boolean), alinmayan: ugursuz.map((i) => sira[i].serialNumber) };
+}

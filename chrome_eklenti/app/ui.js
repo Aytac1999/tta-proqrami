@@ -84,8 +84,8 @@
     $("[data-f=edvdan]").value = `${b.getFullYear()}-01`; $("[data-f=edvya]").value = ay(kecen); }
   const oxu = (s) => {
     const f = (k) => $(`[data-f=${k}]`, s);
-    return { istiqamet: f("ist").value, dan: f("dan").value, ya: f("ya").value,
-      voen: f("voen").value.split(/[\s,;]+/).filter(Boolean), nomre: f("nomre").value.toUpperCase().split(/[\s,;]+/).filter(Boolean),
+    return { istiqamet: f("ist") ? f("ist").value : "", dan: f("dan").value, ya: f("ya").value,
+      voen: f("voen") ? f("voen").value.split(/[\s,;]+/).filter(Boolean) : [], nomre: f("nomre") ? f("nomre").value.toUpperCase().split(/[\s,;]+/).filter(Boolean) : [],
       f: (k) => (f(k) ? f(k).checked : false) };
   };
 
@@ -297,6 +297,19 @@
     netice([["", `${r.bey.length} ay üzrə bəyannamə tapıldı (${qs} qaimə, ${r.ygb.length} idxal sətri).`],
       ...(r.tapilmayan.length ? [["x", `e-taxes-də tapılmayan qaimə: ${r.tapilmayan.length} (Excel-də qeyd olunub).`]] : []),
       ["ok", `Yerləşdirildi: ${yer}.`]]);
+  }));
+
+  $("#bas-akt").addEventListener("click", () => isle("akt", async () => {
+    const o = oxu($("#b-akt"));
+    if (!o.dan || !o.ya) return netice([["x", "Tarixi gg.aa.iiii formatında düzgün yazın (məs. 08.10.2026)."]]);
+    if (o.dan > o.ya) return netice([["x", "Başlanğıc tarix son tarixdən böyük ola bilməz."]]);
+    const r = await aktlariTopla(o, (i, n) => { progress(i, n); netice([["", `İşləyir … ${i}/${n}`]]); });
+    if (!r.aktlar.length) return netice([["", `${aralikYazi(o)} aralığında alış aktı tapılmadı.`]]);
+    const bytes = await xlsxYarat(aktSehifeleri(r.aktlar));
+    const yer = await saxla([{ ad: `alis_aktlari_${bugun()}.xlsx`, data: bytes, mime: XLSX_MIME }]);
+    const sətir = r.aktlar.reduce((a, x) => a + (x._items.length || 1), 0);
+    netice([["", `${aralikYazi(o)} aralığında ${r.aktlar.length} akt tapıldı (${sətir} mal sətri).`],
+      ...(r.alinmayan.length ? [["x", `Götürülməyən akt: ${r.alinmayan.join(" ")}`]] : []), ["ok", `Yerləşdirildi: ${yer}.`]]);
   }));
 
   $("#qaime-sablon").addEventListener("click", async () => {

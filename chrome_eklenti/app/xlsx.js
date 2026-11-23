@@ -193,3 +193,29 @@ function edvSehifeleri(setirler, ygb, bey) {
   return [sh, { ad: "İdxal (YGB)", rows: yg, eni: [18, 18, 20, 14, 16, 16], dondur: true, suzgec: 6 },
     { ad: "Bəyannamələr", rows: bl, eni: [18, 18, 22, 26, 16, 18, 18, 16], dondur: true, suzgec: 8 }];
 }
+
+
+function aktSehifeleri(aktlar) {
+  const bs = (a) => a.map((v) => ({ v, s: S.TBASLIQ }));
+  const bas = ["Akt (seriya+nömrə)", "Akt tarixi", "İmzalanma tarixi", "Kağız aktın tarixi", "Növü", "Status", "Aktın tipi (Cari/Düzəliş)", "Düzəliş edilən akt",
+    "Satıcı FİN", "Satıcı adı", "Satıcı telefon", "Qeyd", "Sıra №", "Malın adı", "Malın kodu", "GTIN", "Ölçü vahidi", "Miqdar", "Vahidin qiyməti",
+    "Məbləğ", "Vergi dərəcəsi", "Vergi məbləği", "Yekun məbləğ", "Sair qeydlər", "Aktın yekun məbləği"];
+  const eni = [20, 12, 12, 12, 30, 18, 14, 18, 12, 34, 16, 40, 6, 28, 14, 14, 10, 12, 12, 14, 18, 12, 14, 30, 14];
+  const rows = [bs(bas)];
+  const T = (s) => _tarixIso(s);
+  for (const a of aktlar) {
+    const sl = a.seller || {}, it = a._items || [];
+    const bas1 = [a.serialNumber || "", T(a.createdAt), T(a.signingDate), (a.ministeryBlank && a.ministeryBlank.date) ? String(a.ministeryBlank.date).replace(/^(\d{4})(\d{2})(\d{2})$/, "$3.$2.$1") : "",
+      AKT_NOV_AZ[a.kind] || a.kind || "", AKT_STATUS_AZ[a.status] || a.status || "", a.type === "corrected" ? "Düzəliş" : "Cari", a.correctedActSerialNumber || "",
+      sl.fin || "", sl.fullName || "", sl.phoneNumber || a.phoneNumber || "", String(a.note || "").trim()];
+    if (!it.length) { rows.push([...bas1, "", "", "", "", "", "", "", "", "", "", "", "", { v: a.amount, s: S.TPUL }]); continue; }
+    it.forEach((m, i) => {
+      const cost = Number(m.cost) || 0, vat = Number(m.taxAmount) || 0;
+      rows.push([...bas1, i + 1, m.productName || "", (m.productGroup && m.productGroup.code) || "", m.gtin || "", m.unit || "",
+        { v: Number(m.quantity) || 0, s: S.TQIYMET }, { v: Number(m.pricePerUnit) || 0, s: S.TQIYMET }, { v: cost, s: S.TPUL },
+        AKT_VERGI_AZ[m.taxRate] || m.taxRate || "", { v: vat, s: S.TPUL }, { v: Math.round((cost + vat) * 100) / 100, s: S.TPUL }, m.note || "",
+        { v: a.amount, s: S.TPUL }]);
+    });
+  }
+  return [{ ad: "Alış aktları", rows, eni, dondur: true, suzgec: bas.length }];
+}

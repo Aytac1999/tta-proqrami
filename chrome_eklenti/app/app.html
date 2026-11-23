@@ -8,7 +8,7 @@
   <div id="xeberdarliq" class="xeb" hidden>e-taxes-ə daxil olunmayıb. Səhifədə Asan İmza ilə daxil olun. <button id="ac">e-taxes-i aç</button></div>
   <div class="papka">Fayllar: <b id="papka-ad">Yükləmələr qovluğu</b>
     <button id="papka-sec">Qovluq seç…</button><button id="papka-sil" hidden title="Standarta qayıt">×</button></div>
-  <nav><button data-b="terkib" class="aktiv">1. Tərkib (Excel)</button><button data-b="tta">2. Sənədlər</button><button data-b="edv">3. ƏDV əvəzləşməsi</button><button data-b="qaime">4. Qaimə yazma</button><button data-b="icaze" id="nav-icaze" hidden>İcazələr</button></nav>
+  <nav><button data-b="terkib" class="aktiv">1. Tərkib (Excel)</button><button data-b="tta">2. Sənədlər</button><button data-b="edv">3. ƏDV əvəzləşməsi</button><button data-b="qaime">4. Qaimə yazma</button><button data-b="akt">5. Alış aktları</button><button data-b="icaze" id="nav-icaze" hidden>İcazələr</button></nav>
 
   <section id="b-terkib" class="bolme">
     <label>İstiqamət<select data-f="ist"><option value="hamisi">Gələn + Göndərilən</option><option value="gelen">Yalnız gələn</option><option value="gonderilen">Yalnız göndərilən</option></select></label>
@@ -32,6 +32,13 @@
     <label>Excel faylı<input type="file" id="qaime-fayl" accept=".xlsx"></label>
     <label class="cek"><input type="checkbox" id="qaime-yoxla" checked> Əvvəl yalnız yoxla (qaralama yaratma)</label>
     <button class="esas" id="bas-qaime">Qaralamaları yarat</button>
+  </section>
+
+  <section id="b-akt" class="bolme" hidden>
+    <p class="qeyd">«Elektron alış aktı» siyahısındakı aktlar (təsdiqlənmiş və ləğv olunmuş da daxil olmaqla bütün statuslar) mal sətirləri ilə Excel-ə yazılır. Təsdiq gözləyənlər və qaralamalar götürülmür.</p>
+    <div class="ikili"><label>Başlanğıc tarix<div class="tarix" data-f="dan"></div></label><label>Son tarix<div class="tarix" data-f="ya"></div></label></div>
+    <div class="lnkler"><button class="lnk" data-ar="bu-ay">Bu ay</button><button class="lnk" data-ar="kecen-ay">Keçən ay</button><button class="lnk" data-ar="bu-il">Bu il</button></div>
+    <button class="esas" id="bas-akt">Alış aktları Excel-i hazırla</button>
   </section>
 
   <section id="b-icaze" class="bolme" hidden>
