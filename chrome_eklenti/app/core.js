@@ -275,15 +275,17 @@ class ETaxes {
   async siyahiKohne(istiqamet, dan, ya, serial) {
     const yaG = new Date(ya + "T00:00:00Z"); yaG.setUTCDate(yaG.getUTCDate() + 1);
     const yaS = yaG.toISOString().slice(0, 10).split("-").reverse().join("-");
+    const STAT7 = ["onApproval", "approved", "created", "taxInvoiceSent", "taxInvoiceCancelled", "acceptedBySystem", "taxInvoiceCreatedBySystem"];
     const govde = {
       sortBy: "creationDate", sortAsc: true,
-      statuses: ["onApproval", "approved", "created", "taxInvoiceSent", "taxInvoiceCancelled", "acceptedBySystem", "taxInvoiceCreatedBySystem"],
-      types: ["current", "corrected"], serialNumber: serial || null, receiverTin: null, senderTin: null, senderName: null,
+      statuses: null, types: null,  // boş = hamısı (statusu boş olan qaimələr də düşür); 400 olsa aşağıda köhnə siyahı
+      serialNumber: serial || null, receiverTin: null, senderTin: null, senderName: null,
       creationDateFrom: `${ddmmyyyy(dan)} 00:00`, creationDateTo: `${yaS} 00:00`, amountFrom: null, amountTo: null, offset: 0, maxCount: 100,
     };
     const netice = [];
     for (;;) {
       const r = await this.istek("POST", `/api/po/invoice/public/v1/invoice/find.${istiqamet}`, { json: govde });
+      if (r.status === 400 && govde.statuses === null && !netice.length) { govde.statuses = STAT7; govde.types = ["current", "corrected"]; continue; }
       if (r.status >= 400) throw new Error("köhnə siyahı alınmadı (" + r.status + ")");
       const j = JSON.parse(r.text);
       const sira = (j.invoices || []).map((x) => ({ ...x, _kohne: true }));
