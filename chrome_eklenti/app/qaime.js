@@ -66,24 +66,27 @@ const _edvNov = (t) => { const k = _s(t).toLowerCase().replace(/\s/g, ""); retur
 // sətirlər -> qaimələr (eyni «Qaimə №» bir qaimə); xətalar siyahısı
 function qaimeQrupla(setirler) {
   const qs = new Map(), xeta = [];
+  // yeni şablonda «Əsas»-dan sonra «Əlavə qeyd» sütunu var (sütun 3); köhnə şablonda yoxdur: başlığa görə tanınır
+  const yeni = !/obyekt/i.test(_s((setirler[0] || [])[3]));
+  const g = (s, i) => (i < 3 ? s[i] : yeni ? s[i + 1] : s[i]);
   for (let i = 1; i < setirler.length; i++) {
     const s = setirler[i]; if (!s || !s.some((x) => x != null && x !== "")) continue;
-    const no = i + 1, ad = _s(s[4]);
-    if (!ad && !_s(s[0]) && _n(s[8]) == null) continue;
-    const key = _s(s[0]) || "_" + no, nov_ = /avans/i.test(_s(s[18])) ? "advanceInvoice" : "defaultInvoice";
-    if (!qs.has(key)) qs.set(key, { key, voen: _s(s[1]).replace(/\D/g, ""), esas: _s(s[2]), obyekt: _s(s[3]), alAd: _s(s[19]), mallar: [], ilk: no, kind: nov_ });
+    const no = i + 1, ad = _s(g(s, 4));
+    if (!ad && !_s(g(s, 0)) && _n(g(s, 8)) == null) continue;
+    const key = _s(g(s, 0)) || "_" + no, nov_ = /avans/i.test(_s(g(s, 18))) ? "advanceInvoice" : "defaultInvoice";
+    if (!qs.has(key)) qs.set(key, { key, voen: _s(g(s, 1)).replace(/\D/g, ""), esas: _s(g(s, 2)), obyekt: _s(g(s, 3)), esas2: yeni ? _s(s[3]) : "", alAd: _s(g(s, 19)), mallar: [], ilk: no, kind: nov_ });
     const q = qs.get(key);
     if (q.kind !== nov_) xeta.push(`Sətir ${no}: eyni qaimədə Mal və Avans qarışıb.`);
-    if (_s(s[1]).replace(/\D/g, "") !== q.voen) xeta.push(`Sətir ${no}: alıcı VÖEN eyni qaimədə fərqlidir.`);
-    const miq = _n(s[8]), qiy = _n(s[9]), aks = _n(s[10]), yol = _n(s[12]), nov = _edvNov(s[11]);
+    if (_s(g(s, 1)).replace(/\D/g, "") !== q.voen) xeta.push(`Sətir ${no}: alıcı VÖEN eyni qaimədə fərqlidir.`);
+    const miq = _n(g(s, 8)), qiy = _n(g(s, 9)), aks = _n(g(s, 10)), yol = _n(g(s, 12)), nov = _edvNov(g(s, 11));
     if (!ad) xeta.push(`Sətir ${no}: malın adı yoxdur.`);
-    if (!_s(s[7])) xeta.push(`Sətir ${no}: ölçü vahidi yoxdur.`);
+    if (!_s(g(s, 7))) xeta.push(`Sətir ${no}: ölçü vahidi yoxdur.`);
     if (miq == null || isNaN(miq) || miq <= 0) xeta.push(`Sətir ${no}: miqdar düzgün deyil.`);
     if (qiy == null || isNaN(qiy) || qiy < 0) xeta.push(`Sətir ${no}: qiymət düzgün deyil.`);
     if (aks != null && isNaN(aks)) xeta.push(`Sətir ${no}: aksiz dərəcəsi düzgün deyil.`);
     if (yol != null && isNaN(yol)) xeta.push(`Sətir ${no}: yol vergisi düzgün deyil.`);
     if (!nov) xeta.push(`Sətir ${no}: ƏDV növü tanınmadı (18%, 0%, azad, cəlb edilmir).`);
-    q.mallar.push({ no, ad, kod: _s(s[5]), gtin: _s(s[6]), vahid: _s(s[7]), miq, qiy, aks: aks || 0, nov, yol: yol || 0 });
+    q.mallar.push({ no, ad, kod: _s(g(s, 5)), gtin: _s(g(s, 6)), vahid: _s(g(s, 7)), miq, qiy, aks: aks || 0, nov, yol: yol || 0 });
   }
   for (const q of qs.values()) {
     if (!/^\d{10}$/.test(q.voen)) xeta.push(`Qaimə «${q.key}» (sətir ${q.ilk}): alıcı VÖEN 10 rəqəm olmalıdır.`);
@@ -107,7 +110,7 @@ function qaimeGovdesi(q, ad, serial, vahidler) {
   return {
     kind: q.kind,
     receiver: { tin: q.voen, pin: null, passportSerialNumber: null, name: ad, objectName: q.obyekt || "", objectCode: null },
-    resaleType: null, serialNumber: serial, invoiceComment: q.esas, invoiceComment2: "", type: "current",
+    resaleType: null, serialNumber: serial, invoiceComment: q.esas, invoiceComment2: q.esas2 || "", type: "current",
     items: q.mallar.map((m) => {
       const kod = vahidTap(vahidler, m.vahid);  // siyahıda varsa rəsmi ad + kod; yoxdursa yazıldığı kimi, kodsuz
       const ad = kod === undefined ? m.vahid : (Object.keys(vahidler).find((k) => vahidler[k] === kod) || m.vahid);
