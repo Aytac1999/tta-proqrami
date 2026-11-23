@@ -353,8 +353,8 @@ async function tarixceAl(cl, q) {
   const sn = q.serialNumber || "", ss = { sourceSystem: q.sourceSystem || "avis" };
   const base = `/api/po/invoice/public/v1/invoice/${q.id}`;
   const [h0, v0, t0, e0] = await Promise.all([   // 4 sorğu eyni anda
-    ekAl(cl, base + "/history", { params: ss }),
-    ekAl(cl, base + "/versions", { params: ss }),
+    q._kohne ? null : ekAl(cl, base + "/history", { params: ss }),   // 2019-dək qaimələrdə tarixçə/versiya e-taxes-də yoxdur (HTTP 500)
+    q._kohne ? null : ekAl(cl, base + "/versions", { params: ss }),
     ekAl(cl, "/api/po/invoice/public/v1/invoice/tree", { json: { serialNumbers: [sn] } }),
     ekAl(cl, `/api/po/invoice/public/v1/invoice/get-related-invoice-tree/${sn}`),
   ]);
