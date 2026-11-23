@@ -143,7 +143,10 @@
     if (!kod || typeof kod !== "string") {
       try {
         const r = await KOPRU("fetch", { url: "https://new.e-taxes.gov.az/api/po/profile/public/v2/profile", auth: true });
-        const pin = r && r.status === 200 ? (JSON.parse(r.text).profile || {}).pin : null;
+        const _pr = r && r.status === 200 ? JSON.parse(r.text) : null;
+        // FİN; şirkət hesabında FİN olmaya bilər: onda VÖEN (tin) götürülür
+        const _tap = (o, a) => { if (!o || typeof o !== "object") return null; for (const k of a) if (o[k] && typeof o[k] !== "object") return o[k]; for (const v of Object.values(o)) { const t = _tap(v, a); if (t) return t; } return null; };
+        const pin = _pr ? (_tap(_pr, ["pin"]) || _tap(_pr, ["tin", "voen", "taxpayerTin"])) : null;
         if (pin) {
           const h = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode("TTA|" + String(pin).trim().toUpperCase())));
           kod = [...h.slice(0, 8)].map((x) => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[x % 32]).join("");
