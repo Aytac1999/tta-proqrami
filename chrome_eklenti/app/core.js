@@ -263,6 +263,37 @@ class ETaxes {
     }
   }
   async siyahi(istiqamet, dan, ya, serial) { // dan/ya: ISO; serial: yalnız bu nömrəli qaimə
+    // 2020-ci ilədək qaimələr e-taxes-də ayrıca (köhnə, v1) bölmədədir: aralıq iki hissəyə bölünür
+    const SINIR = "2020-01-01";
+    if (dan < SINIR) {
+      const kohne = await this.siyahiKohne(istiqamet, dan, ya < SINIR ? ya : "2019-12-31", serial);
+      const yeni = ya >= SINIR ? await this.siyahi1(istiqamet, SINIR, ya, serial) : [];
+      return [...kohne, ...yeni];
+    }
+    return this.siyahi1(istiqamet, dan, ya, serial);
+  }
+  async siyahiKohne(istiqamet, dan, ya, serial) {
+    const yaG = new Date(ya + "T00:00:00Z"); yaG.setUTCDate(yaG.getUTCDate() + 1);
+    const yaS = yaG.toISOString().slice(0, 10).split("-").reverse().join("-");
+    const govde = {
+      sortBy: "creationDate", sortAsc: true,
+      statuses: ["onApproval", "approved", "created", "taxInvoiceSent", "taxInvoiceCancelled", "acceptedBySystem", "taxInvoiceCreatedBySystem"],
+      types: ["current", "corrected"], serialNumber: serial || null, receiverTin: null, senderTin: null, senderName: null,
+      creationDateFrom: `${ddmmyyyy(dan)} 00:00`, creationDateTo: `${yaS} 00:00`, amountFrom: null, amountTo: null, offset: 0, maxCount: 100,
+    };
+    const netice = [];
+    for (;;) {
+      const r = await this.istek("POST", `/api/po/invoice/public/v1/invoice/find.${istiqamet}`, { json: govde });
+      if (r.status >= 400) throw new Error("köhnə siyahı alınmadı (" + r.status + ")");
+      const j = JSON.parse(r.text);
+      const sira = (j.invoices || []).map((x) => ({ ...x, _kohne: true }));
+      netice.push(...sira);
+      if (!j.hasMore || !sira.length) break;
+      govde.offset += sira.length;
+    }
+    return netice;
+  }
+  async siyahi1(istiqamet, dan, ya, serial) {
     const yaG = new Date(ya + "T00:00:00Z"); yaG.setUTCDate(yaG.getUTCDate() + 1);
     const yaS = yaG.toISOString().slice(0, 10).split("-").reverse().join("-");
     const govde = {
@@ -301,7 +332,15 @@ class ETaxes {
     if (r.status >= 400) throw new Error("HTTP " + r.status);
     return JSON.parse(r.text);
   }
-  detay(q) { return this.json("GET", `/api/po/invoice/public/v2/invoice/${q.id}`, { params: { sourceSystem: q.sourceSystem || "avis" } }); }
+  async detay(q) {
+    if (q._kohne) {  // 2020-ci ilədək: v1; 18% ƏDV bazası legacyAttributes.vatTaxedCost-dadır
+      const d = await this.json("GET", `/api/po/invoice/public/v1/invoice/${q.id}`);
+      for (const it of d.items || []) if (it.vat18 == null) it.vat18 = num((it.legacyAttributes || {}).vatTaxedCost);
+      return d;
+    }
+    return this.detay2(q);
+  }
+  detay2(q) { return this.json("GET", `/api/po/invoice/public/v2/invoice/${q.id}`, { params: { sourceSystem: q.sourceSystem || "avis" } }); }
 }
 async function ekAl(cl, yol, o) {
   try { return await cl.json(o && o.json ? "POST" : "GET", yol, o); }
