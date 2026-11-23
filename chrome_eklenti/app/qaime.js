@@ -73,11 +73,13 @@ function qaimeQrupla(setirler) {
     const s = setirler[i]; if (!s || !s.some((x) => x != null && x !== "")) continue;
     const no = i + 1, ad = _s(g(s, 4));
     if (!ad && !_s(g(s, 0)) && _n(g(s, 8)) == null) continue;
-    const key = _s(g(s, 0)) || "_" + no, nov_ = /avans/i.test(_s(g(s, 18))) ? "advanceInvoice" : "defaultInvoice";
+    const key = _s(g(s, 0)) || "_" + no, novHam = _s(g(s, 18)), nov_ = /avans/i.test(novHam) ? "advanceInvoice" : "defaultInvoice";
     if (!qs.has(key)) qs.set(key, { key, voen: _s(g(s, 1)).replace(/\D/g, ""), esas: _s(g(s, 2)), obyekt: _s(g(s, 3)), esas2: yeni ? _s(s[3]) : "", alAd: _s(g(s, 19)), mallar: [], ilk: no, kind: nov_ });
     const q = qs.get(key);
-    if (q.kind !== nov_) xeta.push(`Sətir ${no}: eyni qaimədə Mal və Avans qarışıb.`);
-    if (_s(g(s, 1)).replace(/\D/g, "") !== q.voen) xeta.push(`Sətir ${no}: alıcı VÖEN eyni qaimədə fərqlidir.`);
+    // qaimənin ilk sətrində yazılan VÖEN / növ / əsas bəsdir: sonrakı sətirlərdə boş qala bilər (yazılıbsa, eyni olmalıdır)
+    if (novHam && q.kind !== nov_) xeta.push(`Sətir ${no}: eyni qaimədə Mal və Avans qarışıb.`);
+    const vo = _s(g(s, 1)).replace(/\D/g, "");
+    if (vo && vo !== q.voen) xeta.push(`Sətir ${no}: alıcı VÖEN eyni qaimədə fərqlidir.`);
     const miq = _n(g(s, 8)), qiy = _n(g(s, 9)), aks = _n(g(s, 10)), yol = _n(g(s, 12)), nov = _edvNov(g(s, 11));
     if (!ad) xeta.push(`Sətir ${no}: malın adı yoxdur.`);
     if (!_s(g(s, 7))) xeta.push(`Sətir ${no}: ölçü vahidi yoxdur.`);
