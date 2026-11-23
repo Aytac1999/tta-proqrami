@@ -157,7 +157,7 @@ function aktSehifesi(q, sat, alc, tip, rekv) {
     rows.push([], [], []);
   } else rows.push([{ v: iddiaMetni(tip), s: S.NORMAL }], [], [], []);
   const b = rows.length + 1;
-  const blok = (tr, bas) => [bas, tr.ad, `VÖEN: ${tr.voen}`, "", DIREKTORSUZ ? "" : `${tr.rol}: ${tr.direktor}`, "", "", "", "İmza: ______________________", "M.Y."];
+  const blok = (tr, bas) => [bas, tr.ad, `VÖEN: ${tr.voen}`, "", direktorYox(tip) ? "" : `${tr.rol}: ${tr.direktor}`, "", "", "", "İmza: ______________________", "M.Y."];
   const sb = blok(sat, "SATICI"), ab = blok(alc, "ALICI");
   for (let k = 0; k < 10; k++) {
     const row = [];

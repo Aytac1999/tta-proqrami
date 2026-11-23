@@ -235,7 +235,8 @@ function girisMetni(q, sat, alc, tip) {
 }
 // Hesab-faktura üçün satıcının bank rekvizitləri (istifadəçi özü daxil edir): {"VÖEN" və ya "*": {ad, kod, bvoen, mh, swift, hesab}}
 let DIREKTORSUZ = false;  // true: imza blokunda yalnız şirkət adı, direktor sətri yoxdur
-const dirSetri = (t) => (DIREKTORSUZ ? "" : `${t.rol}: ${t.direktor || "______________________"}`);
+const direktorYox = (tip) => DIREKTORSUZ && _tip(tip) === "tta";  // seçim yalnız TTA üçündür
+const dirSetri = (t) => `${t.rol}: ${t.direktor || "______________________"}`;
 const REKV_SETRI = [["ad", "Bank"], ["kod", "Bank kodu"], ["bvoen", "Bankın VÖEN-i"], ["mh", "Müxbir hesab (M/H)"], ["swift", "SWIFT"], ["hesab", "Hesab nömrəsi (IBAN)"]];
 async function rekvizitler() { return (await KOPRU("get", { key: "rekvizitler" })) || {}; }
 function rekvizitSec(dict, voen) { return dict[voen] || dict["*"] || null; }

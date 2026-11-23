@@ -178,15 +178,16 @@ function _aktSehifeler(q, sat, alc, tip, rekv, miqyas) {
   const ensb = 240, xA = _PSOL, xB = _PSOL + 275;
   const HES = tip === "hesab";  // hesab-fakturada yalnız satıcı
   const adS = _sar(sat.ad, 10, true, ensb), adA = HES ? [] : _sar(alc.ad, 10, true, ensb);
-  const dsz = (t) => (DIREKTORSUZ ? [] : _sar(dirSetri(t), 10, false, ensb));
+  const DSZ = direktorYox(tip);
+  const dsz = (t) => (DSZ ? [] : _sar(dirSetri(t), 10, false, ensb));
   const dirS = dsz(sat), dirA = HES ? [] : dsz(alc);
-  const yuksek = 13 + Math.max(adS.length, adA.length) * 12 + 14 + 14 + Math.max(dirS.length, dirA.length, DIREKTORSUZ ? 0 : 1) * 12 + (DIREKTORSUZ ? 14 : 46) + 26;
+  const yuksek = 13 + Math.max(adS.length, adA.length) * 12 + 14 + 14 + Math.max(dirS.length, dirA.length, DSZ ? 0 : 1) * 12 + (DSZ ? 14 : 46) + 26;
   if (y + yuksek > _HV - _PASAGI) yeni();
   const blok = (x, bas, ad, t, dir) => {
     let yy = y; sh.yaz(x, yy + 9, bas, 10, true); yy += 13;
     ad.forEach((l, k) => sh.yaz(x, yy + 9 + k * 12, l, 10, true));
     yy += Math.max(adS.length, adA.length) * 12;  // iki tərəfdə eyni hündürlük: VÖEN və direktor eyni səviyyədə
-    sh.yaz(x, yy + 9, `VÖEN: ${t.voen}`, 10, false); yy += DIREKTORSUZ ? 14 : 28;
+    sh.yaz(x, yy + 9, `VÖEN: ${t.voen}`, 10, false); yy += DSZ ? 14 : 28;
     for (const l of dir) { sh.yaz(x, yy + 9, l, 10, false); yy += 12; }
     return yy;
   };

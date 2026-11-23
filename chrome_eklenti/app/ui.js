@@ -365,7 +365,7 @@
     for (const x of q) {
       const sat = await teref(x.gonderen_voen, x.gonderen_ad), alc = await teref(x.qebul_voen, x.qebul_ad);
       const no = faylAdi(x, sat, alc);
-      if (!DIREKTORSUZ && (!sat.direktor || !alc.direktor)) direktorsuz.push(x.seriya + x.nomre);
+      if ((!DIREKTORSUZ || prot || hes) && (!sat.direktor || !alc.direktor)) direktorsuz.push(x.seriya + x.nomre);
       const yaz = async (ad, tip, rk) => {
         if (excelVar) fayllar.push({ ad: `${ad}_${no}.xlsx`, data: await xlsxYarat([aktSehifesi(x, sat, alc, tip, rk)]), mime: XLSX_MIME });
         if (pdfVar) fayllar.push({ ad: `${ad}_${no}.pdf`, data: await aktPdf(x, sat, alc, tip, rk), mime: "application/pdf" });
