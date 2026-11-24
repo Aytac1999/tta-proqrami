@@ -107,7 +107,15 @@ async function aktPdf(q, sat, alc, tip, rekv) {
       const t = _aktSehifeler(q, sat, alc, tip, rekv, Math.round(s * 100) / 100);
       if (t.length === 1) { sehifeler = t; break; }
     }
-    if (sehifeler.length > 1) sehifeler = _aktSehifeler(q, sat, alc, tip, rekv, 1);
+    if (sehifeler.length > 1) {   // bir səhifəyə sığmadı: normal ölçüdə 3+ səhifə çıxırsa, bir az (≤12%) kiçildib 2 səhifəyə salırıq
+      const normal = sehifeler = _aktSehifeler(q, sat, alc, tip, rekv, 1);
+      if (normal.length > 2) {
+        for (let s = 0.99; s >= 0.88; s -= 0.01) {
+          const t = _aktSehifeler(q, sat, alc, tip, rekv, Math.round(s * 100) / 100);
+          if (t.length <= 2) { sehifeler = t; break; }
+        }
+      }
+    }
   }
   const bu = _S; const netice = await _pdfYig(sehifeler); _S = 1; _HV = _PH[1];
   return netice;
