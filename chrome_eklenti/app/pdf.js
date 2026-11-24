@@ -100,10 +100,10 @@ async function _pdfYig(sehifeler) {
 }
 const _pBoz = "0.86 0.90 0.95", _pAch = "0.93 0.95 0.97";
 async function aktPdf(q, sat, alc, tip, rekv) {
-  // əvvəl normal ölçüdə; bir neçə səhifə çıxırsa, hər şey bir səhifəyə sığana qədər kiçildilir (ən çox 0,6-yə qədər)
+  // əvvəl normal ölçüdə; bir neçə səhifə çıxırsa, hər şey bir səhifəyə sığana qədər kiçildilir (ən çox 0,8-ə qədər; daha çox mal sətrində akt normal ölçüdə 2 səhifəyə bölünür)
   let sehifeler = _aktSehifeler(q, sat, alc, tip, rekv, 1);
   if (sehifeler.length > 1) {
-    for (let s = 0.99; s >= 0.6; s -= 0.01) {   // incə addım: səhifə mümkün qədər dolsun, yazı lazımsız kiçilməsin
+    for (let s = 0.99; s >= 0.8; s -= 0.01) {   // incə addım: səhifə mümkün qədər dolsun, yazı lazımsız kiçilməsin
       const t = _aktSehifeler(q, sat, alc, tip, rekv, Math.round(s * 100) / 100);
       if (t.length === 1) { sehifeler = t; break; }
     }
