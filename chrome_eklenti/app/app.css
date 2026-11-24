@@ -35,6 +35,7 @@ details{margin-top:6px;font-size:12px;color:#4a5d73}summary{cursor:pointer}
   .akt .giris{margin:0 0 12px}.akt table{border-collapse:collapse;width:100%}
   .akt .mal th,.akt .mal td{border:1px solid #8896aa;padding:2px 4px;vertical-align:middle}.akt .mal th{background:#dce6f2;text-align:center}
   .akt .mal thead{display:table-header-group}.akt .mal tr{page-break-inside:avoid}
+  .akt .mal tr:nth-last-child(-n+3){break-after:avoid;page-break-after:avoid}.akt .mal{break-after:avoid}.akt .yek,.akt .yaz{break-inside:avoid;break-after:avoid}
   .akt .c{text-align:center}.akt .r{text-align:right}
   .akt .yek{width:230px;margin:0 0 0 auto}.akt .yek td{border:1px solid #8896aa;background:#eef2f8;padding:2px 4px;text-align:right}
   .akt .yaz{margin:16px 0 30px}.akt .imza{display:flex;gap:40px;page-break-inside:avoid}.akt .blok{flex:1}

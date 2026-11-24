@@ -136,10 +136,26 @@ function _aktSehifeler(q, sat, alc, tip, rekv, miqyas) {
   for (const t of _sar(girisMetni(q, sat, alc, tip), SZ, false, _PEN)) { sh.yaz(_PSOL, y, t, SZ, false); y += 13; }
   y += 12;
   basliqCedvel();
+  // Cədvəlin sonundan sonra qalan hissənin (cəmi, yazı, imza blokları) hündürlüyü: imza tək başına yeni səhifəyə düşməsin deyə
+  const sonHund = () => {
+    const HES_ = tip === "hesab", ensb_ = 240;
+    const adS_ = _sar(sat.ad, 10, true, ensb_), adA_ = HES_ ? [] : _sar(alc.ad, 10, true, ensb_), DSZ_ = direktorYox(tip);
+    const dsz_ = (t) => (DSZ_ ? [] : _sar(dirSetri(t), 10, false, ensb_));
+    const dS = dsz_(sat), dA = HES_ ? [] : dsz_(alc);
+    const yz = _sar("Yekun məbləğ (yazı ilə): " + meblegYazi(q.yekun), 10, true, _PEN);
+    const id = iddiaMetni(tip) ? _sar(iddiaMetni(tip), SZ, false, _PEN) : [];
+    const isb = 13 + Math.max(adS_.length, adA_.length) * 12 + 14 + 14 + Math.max(dS.length, dA.length, DSZ_ ? 0 : 1) * 12 + (DSZ_ ? 14 : 46) + 26;
+    return 3 * 17 + 22 + yz.length * 13 + id.length * 13 + (HES_ ? 14 + 15 + REKV_SETRI.length * 14 : 0) + 28 + isb;
+  };
+  const SON_K = Math.min(3, q.mallar.length);
   for (let i = 0; i < q.mallar.length; i++) {
     const m = q.mallar[i];
     const ad = _sar(m.ad, SZ, false, sutun[1] - 8);
     const h = Math.max(ad.length, 1) * LH + 6;
+    if (i === q.mallar.length - SON_K && y > _PYUXARI + 80) {  // son 3 sətir cəmi və imza ilə birlikdə qalsın
+      const sh3 = q.mallar.slice(i).reduce((t, mm) => t + Math.max(_sar(mm.ad, SZ, false, sutun[1] - 8).length, 1) * LH + 6, 0);
+      if (y + sh3 + sonHund() > _HV - _PASAGI) { yeni(); basliqCedvel(); }
+    }
     if (y + h > _HV - _PASAGI) { yeni(); basliqCedvel(); }
     sutun.forEach((e, k) => sh.dort(x0[k], y, e, h, null));
     const by = y + 4 + SZ - 1, orta = (k) => x0[k] + sutun[k] / 2, sagK = (k) => x0[k] + sutun[k] - 4;
