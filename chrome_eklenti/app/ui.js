@@ -337,8 +337,9 @@
       const q = qaimeler[i]; progress(i, qaimeler.length); netice([["", `Yaradılır … ${i}/${qaimeler.length}`], ...sonuc]);
       try {
         let rey = await reyestr(q.voen);
-        if (!rey && q.alAd) rey = { ad: q.alAd };  // fərdi sahibkar və s.: şablondakı ad
-        if (!rey) { sonuc.push(["x", `${q.key}: alıcı VÖEN ${q.voen} reyestrdə tapılmadı (fərdi sahibkardırsa şablonun «Alıcının adı» sütununa Soyad Ad Ata adı yazın).`]); continue; }
+        if (!rey && /2$/.test(String(q.voen))) rey = await fizikiAd(q.voen);  // fərdi sahibkar: e-taxes xidmətindən ad
+        if (!rey && q.alAd) rey = { ad: q.alAd };  // tapılmadısa: şablondakı «Alıcının adı»
+        if (!rey) { sonuc.push(["x", `${q.key}: alıcı VÖEN ${q.voen} tapılmadı (fərdi sahibkardırsa şablonun «Alıcının adı» sütununa Soyad Ad Ata adı yazın).`]); continue; }
         const sr = await et.istek("GET", "/api/po/invoice/public/v1/generateSerialNumber/" + q.kind);
         if (sr.status >= 400) throw new Error("seriya nömrəsi alınmadı (" + sr.status + ")");
         let serial = sr.text.trim(); try { const j = JSON.parse(sr.text); serial = typeof j === "string" ? j : j.serialNumber || j.serial || serial; } catch (e) {}
