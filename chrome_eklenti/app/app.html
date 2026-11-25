@@ -8,7 +8,7 @@
   <div id="xeberdarliq" class="xeb" hidden>e-taxes-ə daxil olunmayıb. Səhifədə Asan İmza ilə daxil olun. <button id="ac">e-taxes-i aç</button></div>
   <div class="papka">Fayllar: <b id="papka-ad">Yükləmələr qovluğu</b>
     <button id="papka-sec">Qovluq seç…</button><button id="papka-sil" hidden title="Standarta qayıt">×</button></div>
-  <nav><button data-b="terkib" class="aktiv">1. Tərkib (Excel)</button><button data-b="tta">2. Sənədlər</button><button data-b="edv">3. ƏDV əvəzləşməsi</button><button data-b="qaime">4. Qaimə yazma</button><button data-b="akt">5. Alış aktları</button><button data-b="icaze" id="nav-icaze" hidden>İcazələr</button></nav>
+  <nav><button data-b="terkib" class="aktiv">1. Tərkib (Excel)</button><button data-b="tta">2. Sənədlər</button><button data-b="edv">3. ƏDV əvəzləşməsi</button><button data-b="qaime">4. Qaimə yazma</button><button data-b="akt">5. Alış aktları</button><button data-b="evezsiz">6. Əvəzləşməmiş qaimələr</button><button data-b="icaze" id="nav-icaze" hidden>İcazələr</button></nav>
 
   <section id="b-terkib" class="bolme">
     <label>İstiqamət<select data-f="ist"><option value="hamisi">Gələn + Göndərilən</option><option value="gelen">Yalnız gələn</option><option value="gonderilen">Yalnız göndərilən</option></select></label>
@@ -24,6 +24,12 @@
     <p class="qeyd">Hər ay üçün ən son ƏDV bəyannaməsi (cari / dəqiqləşdirilmiş / kameral) götürülür, "Əvəzləşdirmə üçün elektron qaimələr" və idxal (YGB) Excel-ə yazılır.</p>
     <div class="ikili"><label>Başlanğıc ay<input type="month" data-f="edvdan"></label><label>Son ay<input type="month" data-f="edvya"></label></div>
     <button class="esas" id="bas-edv">ƏDV əvəzləşməsi Excel-i hazırla</button>
+  </section>
+
+  <section id="b-evezsiz" class="bolme" hidden>
+    <p class="qeyd">Seçilən aylarda alınmış, təsdiqlənmiş və ƏDV-li qaimələrdən heç bir ƏDV bəyannaməsində əvəzləşdirilməyənlər Excel-ə yazılır.</p>
+    <div class="ikili"><label>Başlanğıc ay<input type="month" data-f="evsdan"></label><label>Son ay<input type="month" data-f="evsya"></label></div>
+    <button class="esas" id="bas-evezsiz">Əvəzləşməmiş qaimələri tap</button>
   </section>
 
   <section id="b-qaime" class="bolme" hidden>

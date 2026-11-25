@@ -248,3 +248,18 @@ function riskSehifesi(setirler) {
   for (const n of setirler) rows.push([n.voen, n.ad, n.risky === null ? "yoxlanmadı" : n.risky ? "BƏLİ" : "xeyr", n.qeyd || ""]);
   return [{ ad: "Risk yoxlaması", rows, eni: [16, 46, 24, 60], dondur: true, suzgec: 4 }];
 }
+
+
+function evezlesmemisSehifeleri(qaimeler) {
+  const bs = (a) => a.map((v) => ({ v, s: S.TBASLIQ }));
+  const bas = ["Qaimə (seriya+nömrə)", "Qaimə tarixi", "Satıcı VÖEN", "Satıcı adı", "Məbləğ (ƏDV-siz)", "ƏDV", "Yekun məbləğ", "Statusu"];
+  const rows = [bs(bas)];
+  let c1 = 0, c2 = 0, c3 = 0;
+  for (const q of qaimeler) {
+    rows.push([q.seriya + q.nomre, q.tarix, q.gonderen_voen || "", q.gonderen_ad || "", { v: q._cemi, s: S.TPUL }, { v: q._edv, s: S.TPUL }, { v: q._yekun, s: S.TPUL }, q.status || ""]);
+    c1 += q._cemi; c2 += q._edv; c3 += q._yekun;
+  }
+  const r2 = (x) => Math.round(x * 100) / 100;
+  rows.push(["CƏMİ", "", "", "", { v: r2(c1), s: S.TPUL }, { v: r2(c2), s: S.TPUL }, { v: r2(c3), s: S.TPUL }, ""]);
+  return [{ ad: "Əvəzləşməmiş qaimələr", rows, eni: [20, 12, 14, 36, 16, 14, 16, 18], dondur: true, suzgec: bas.length }];
+}

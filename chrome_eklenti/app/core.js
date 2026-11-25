@@ -764,3 +764,45 @@ async function riskSiyahisi(voenler, progress) {
   await Promise.all(Array.from({ length: Math.min(4, voenler.length) }, isci));
   return netice.filter(Boolean);
 }
+
+
+// ------------------------------------------------------------------ Əvəzləşməmiş qaimələr (gələn qaimələr − bəyannamələrdə göstərilənlər)
+// dan/ya: "YYYY-MM". Seçilən aylarda alınmış, təsdiqlənmiş, ƏDV-li qaimələrdən heç bir ƏDV bəyannaməsinin "Əvəzləşmə üçün elektron qaimələr" cədvəlində olmayanlar
+async function evezlesmemisQaimeler({ dan, ya }, progress) {
+  const cl = new ETaxes();
+  progress && progress(null, null, "e-taxes-ə qoşulur");
+  const [yI, yA] = ya.split("-").map(Number);
+  const dan1 = dan + "-01", ya1 = ya + "-" + String(new Date(Date.UTC(yI, yA, 0)).getUTCDate()).padStart(2, "0");
+  const bugunAy = new Date().toISOString().slice(0, 7);
+  // əvəzləşmə sonrakı aylarda da edilə bilər: bəyannamələr bu günə qədər oxunur
+  const bey = await edvBeyannameleri(cl, dan, bugunAy > ya ? bugunAy : ya, progress);
+  const evez = new Set();
+  let bn = 0, oxunan = 0;
+  await Promise.all(Array.from({ length: Math.min(4, bey.length) }, async () => {
+    while (!DAYANDI()) {
+      const i = bn++; if (i >= bey.length) return;
+      const inv = await beyCedvel(cl, "VAT_APPENDIX_1_REPORT_PERIOD_INVOICE", bey[i].no);
+      for (const r of inv) evez.add(r.documentSerial + r.documentNumber);
+      progress && progress(++oxunan, bey.length, "Bəyannamələr oxunur");
+    }
+  }));
+  progress && progress(null, null, "Alınmış qaimələrin siyahısı oxunur");
+  const sira = (await cl.siyahi("inbox", dan1, ya1)).filter((x) => { const t = tarixTap(x); return t === null || araliqda(t, dan1, ya1); })
+    .filter((x) => !evez.has(x.serialNumber));
+  const netice = [], ugursuz = [];
+  let nov = 0, hazir = 0;
+  await Promise.all(Array.from({ length: Math.min(8, sira.length) }, async () => {
+    while (!DAYANDI()) {
+      const i = nov++; if (i >= sira.length) return;
+      try {
+        const q = qaimeCevir(await cl.detay(sira[i]), "Gələn", null);
+        const edv = r2(q.mallar.reduce((t, m) => t + (Number(m.edv) || 0), 0));
+        const ok = sira[i].status ? /^(approved|approvedBySystem)$/.test(sira[i].status) : /^(Təsdiqləndi|Sistem tərəfindən təsdiqlənib)$/.test(q.status || "");
+        if (ok && edv > 0) netice.push({ ...q, _edv: edv, _cemi: r2(q.mallar.reduce((t, m) => t + (Number(m.mebleg) || 0), 0)), _yekun: r2(q.mallar.reduce((t, m) => t + (Number(m.yekun) || 0), 0)) });
+      } catch (e) { if (e instanceof SessiyaXetasi) throw e; ugursuz.push(sira[i].serialNumber); }
+      progress && progress(++hazir, sira.length, "Qaimələr yoxlanılır");
+    }
+  }));
+  netice.sort((a, b) => iso(a.tarix).localeCompare(iso(b.tarix)) || (a.seriya + a.nomre).localeCompare(b.seriya + b.nomre));
+  return { qaimeler: netice, ugursuz, beySayi: bey.length, cemiQaime: (sira.length + 0) };
+}

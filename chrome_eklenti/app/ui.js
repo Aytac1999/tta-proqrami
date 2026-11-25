@@ -81,7 +81,8 @@
   });
   { const b = new Date(), ay = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
     const kecen = new Date(b.getFullYear(), b.getMonth() - 1, 1);
-    $("[data-f=edvdan]").value = `${b.getFullYear()}-01`; $("[data-f=edvya]").value = ay(kecen); }
+    $("[data-f=edvdan]").value = `${b.getFullYear()}-01`; $("[data-f=edvya]").value = ay(kecen);
+    $("[data-f=evsdan]").value = `${b.getFullYear()}-01`; $("[data-f=evsya]").value = ay(kecen); }
   const oxu = (s) => {
     const f = (k) => $(`[data-f=${k}]`, s);
     return { istiqamet: f("ist") ? f("ist").value : "", dan: f("dan").value, ya: f("ya").value,
@@ -297,6 +298,19 @@
     netice([["", `${r.bey.length} ay üzrə bəyannamə tapıldı (${qs} qaimə, ${r.ygb.length} idxal sətri).`],
       ...(r.tapilmayan.length ? [["x", `e-taxes-də tapılmayan qaimə: ${r.tapilmayan.length} (Excel-də qeyd olunub).`]] : []),
       ["ok", `Yerləşdirildi: ${yer}.`]]);
+  }));
+
+  $("#bas-evezsiz").addEventListener("click", () => isle("evezsiz", async () => {
+    const dan = $("#b-evezsiz [data-f=evsdan]").value, ya = $("#b-evezsiz [data-f=evsya]").value;
+    if (!dan || !ya) return netice([["x", "Başlanğıc və son ayı seçin."]]);
+    if (dan > ya) return netice([["x", "Başlanğıc ay son aydan böyük ola bilməz."]]);
+    const r = await evezlesmemisQaimeler({ dan, ya }, (i, n, faza) => { if (i == null) return netice([["", `${faza} …`]]); progress(i, n); netice([["", `${faza} … ${i}/${n}`]]); });
+    if (!r.qaimeler.length) return netice([["ok", "Əvəzləşməmiş qaimə tapılmadı."], ...(r.ugursuz.length ? [["x", `Yoxlanılmayan qaimə: ${r.ugursuz.join(" ")}`]] : [])]);
+    const bytes = await xlsxYarat(evezlesmemisSehifeleri(r.qaimeler));
+    const yer = await saxla([{ ad: `evezlesmemis_qaimeler_${bugun()}.xlsx`, data: bytes, mime: XLSX_MIME }]);
+    const edv = Math.round(r.qaimeler.reduce((t, q) => t + q._edv, 0) * 100) / 100;
+    netice([["", `${r.qaimeler.length} əvəzləşməmiş qaimə, ƏDV cəmi: ${fmt(edv)} (${r.beySayi} bəyannamə yoxlandı).`],
+      ...(r.ugursuz.length ? [["x", `Yoxlanılmayan qaimə: ${r.ugursuz.join(" ")}`]] : []), ["ok", `Yerləşdirildi: ${yer}.`]]);
   }));
 
   $("#bas-akt").addEventListener("click", () => isle("akt", async () => {
