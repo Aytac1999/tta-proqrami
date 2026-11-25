@@ -734,3 +734,33 @@ async function aktlariTopla({ dan, ya }, progress) {
   }
   return { aktlar: aktlar.filter(Boolean), alinmayan: ugursuz.map((i) => sira[i].serialNumber) };
 }
+
+
+// ------------------------------------------------------------------ Riskli vergi ödəyicisi yoxlaması (e-taxes açıq xidməti, giriş tələb etmir)
+const RISK_URL = ETAX + "/api/po/authless/public/v1/authless/payers/risk/";
+async function riskYoxla(voen) {
+  const r = await KOPRU("fetch", { url: RISK_URL + encodeURIComponent(voen), metod: "GET" });
+  if (!r || r.status >= 400) throw new Error("sorğu alınmadı (" + (r ? r.status : "?") + ")");
+  const j = JSON.parse(r.text);
+  return { risky: !!j.risky, info: j.riskyPayerInfoList || [] };
+}
+async function riskSiyahisi(voenler, progress) {
+  const netice = new Array(voenler.length);
+  let nov = 0, hazir = 0;
+  const isci = async () => {
+    while (!DAYANDI()) {
+      const i = nov++; if (i >= voenler.length) return;
+      const v = voenler[i], n = { voen: v, ad: "", risky: null, qeyd: "" };
+      try {
+        if (!/^\d{10}$/.test(v)) throw new Error("VÖEN 10 rəqəm olmalıdır");
+        const [rk, ad] = await Promise.all([riskYoxla(v), (/2$/.test(v) ? fizikiAd(v) : reyestr(v)).catch(() => null)]);
+        n.risky = rk.risky; n.ad = (ad && ad.ad) || "";
+        if (rk.risky) n.qeyd = JSON.stringify(rk.info).slice(0, 300);
+      } catch (e) { if (e instanceof SessiyaXetasi) throw e; n.qeyd = "yoxlanmadı: " + String(e.message).slice(0, 90); }
+      netice[i] = n;
+      progress && progress(++hazir, voenler.length);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(4, voenler.length) }, isci));
+  return netice.filter(Boolean);
+}

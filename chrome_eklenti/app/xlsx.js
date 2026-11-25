@@ -240,3 +240,11 @@ function aktSehifeleri(aktlar) {
   }
   return [{ ad: "Alış aktları", rows, eni, dondur: true, suzgec: bas.length }];
 }
+
+
+function riskSehifesi(setirler) {
+  const bas = ["VÖEN", "Adı", "Riskli vergi ödəyicisidir?", "Qeyd"];
+  const rows = [bas.map((v) => ({ v, s: S.TBASLIQ }))];
+  for (const n of setirler) rows.push([n.voen, n.ad, n.risky === null ? "yoxlanmadı" : n.risky ? "BƏLİ" : "xeyr", n.qeyd || ""]);
+  return [{ ad: "Risk yoxlaması", rows, eni: [16, 46, 24, 60], dondur: true, suzgec: 4 }];
+}

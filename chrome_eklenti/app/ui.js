@@ -312,6 +312,17 @@
       ...(r.alinmayan.length ? [["x", `Götürülməyən akt: ${r.alinmayan.join(" ")}`]] : []), ["ok", `Yerləşdirildi: ${yer}.`]]);
   }));
 
+  $("#bas-risk").addEventListener("click", () => isle("risk", async () => {
+    const voenler = [...new Set(($("#b-risk [data-f=riskvoen]").value || "").split(/[\s,;]+/).filter(Boolean))];
+    if (!voenler.length) return netice([["x", "VÖEN-i yazın (hər biri 10 rəqəm)."]]);
+    const r = await riskSiyahisi(voenler, (i, n) => { progress(i, n); netice([["", `Yoxlanılır … ${i}/${n}`]]); });
+    const riskli = r.filter((n) => n.risky), yox = r.filter((n) => n.risky === null);
+    const sat = r.slice(0, 15).map((n) => [n.risky ? "x" : n.risky === null ? "" : "ok", `${n.voen}${n.ad ? " — " + n.ad : ""}: ${n.risky ? "RİSKLİDİR" : n.risky === null ? n.qeyd : "riskli deyil"}`]);
+    const bytes = await xlsxYarat(riskSehifesi(r));
+    const yer = await saxla([{ ad: `risk_yoxlamasi_${bugun()}.xlsx`, data: bytes, mime: XLSX_MIME }]);
+    netice([["", `${r.length} VÖEN yoxlandı: ${riskli.length} riskli, ${r.length - riskli.length - yox.length} riskli deyil${yox.length ? `, ${yox.length} yoxlanmadı` : ""}.`], ...sat, ...(r.length > 15 ? [["", `… və daha ${r.length - 15} VÖEN Excel-dədir.`]] : []), ["ok", `Yerləşdirildi: ${yer}.`]]);
+  }));
+
   $("#qaime-sablon").addEventListener("click", async () => {
     icaze = papkaVar ? await KOPRU("papka_icaze") : false;
     const bin = atob(QAIME_SABLON_B64), data = Uint8Array.from(bin, (c) => c.charCodeAt(0));
