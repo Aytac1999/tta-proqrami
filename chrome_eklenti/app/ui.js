@@ -317,10 +317,9 @@
     if (!voenler.length) return netice([["x", "VÖEN-i yazın (hər biri 10 rəqəm)."]]);
     const r = await riskSiyahisi(voenler, (i, n) => { progress(i, n); netice([["", `Yoxlanılır … ${i}/${n}`]]); });
     const riskli = r.filter((n) => n.risky), yox = r.filter((n) => n.risky === null);
-    const sat = r.slice(0, 15).map((n) => [n.risky ? "x" : n.risky === null ? "" : "ok", `${n.voen}${n.ad ? " — " + n.ad : ""}: ${n.risky ? "RİSKLİDİR" : n.risky === null ? n.qeyd : "riskli deyil"}`]);
-    const bytes = await xlsxYarat(riskSehifesi(r));
-    const yer = await saxla([{ ad: `risk_yoxlamasi_${bugun()}.xlsx`, data: bytes, mime: XLSX_MIME }]);
-    netice([["", `${r.length} VÖEN yoxlandı: ${riskli.length} riskli, ${r.length - riskli.length - yox.length} riskli deyil${yox.length ? `, ${yox.length} yoxlanmadı` : ""}.`], ...sat, ...(r.length > 15 ? [["", `… və daha ${r.length - 15} VÖEN Excel-dədir.`]] : []), ["ok", `Yerləşdirildi: ${yer}.`]]);
+    const _sat = r.slice(0, 15).map((n) => [n.risky ? "x" : n.risky === null ? "" : "ok", `${n.voen}${n.ad ? " — " + n.ad : ""}: ${n.risky ? "RİSKLİDİR" : n.risky === null ? n.qeyd : "riskli deyil"}`]);
+    const sat2 = r.map((n) => [n.risky ? "x" : n.risky === null ? "" : "ok", `${n.voen}${n.ad ? " — " + n.ad : ""}: ${n.risky ? "RİSKLİDİR" : n.risky === null ? n.qeyd : "riskli deyil"}`]);   // fayl yazılmır, nəticə yalnız ekranda
+    netice([["", `${r.length} VÖEN yoxlandı: ${riskli.length} riskli, ${r.length - riskli.length - yox.length} riskli deyil${yox.length ? `, ${yox.length} yoxlanmadı` : ""}.`], ...sat2]);
   }));
 
   $("#qaime-sablon").addEventListener("click", async () => {
