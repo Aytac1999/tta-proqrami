@@ -647,10 +647,10 @@ async function edvEvezlesmesi({ dan, ya }, progress) {
   // VÖEN -> ad: əvvəl tapılmış qaimələrdən, tapılmayanlar üçün reyestrdən (fərdi sahibkar VÖEN-i 2 ilə bitir: reyestr yoxdur)
   const adlar = {}; let oz = null;
   for (const q of ceh.values()) if (q) { if (q.gonderen_voen && q.gonderen_ad) adlar[q.gonderen_voen] = q.gonderen_ad; if (!oz && q.qebul_voen) oz = { voen: q.qebul_voen, ad: q.qebul_ad }; }
-  const bilinmeyen = [...new Set(bey.flatMap((b) => (b.inv || []).filter((r) => !ceh.get(r.documentSerial + r.documentNumber)).map((r) => r.tin)).filter((t) => t && !adlar[t]))];
+  const bilinmeyen = [...new Set(bey.flatMap((b) => (b.inv || []).filter((r) => !ceh.get(r.documentSerial + r.documentNumber)).map((r) => r.tin)).filter((t) => t && !adlar[t] && !/2$/.test(t)))];
   let rn = 0;
   await Promise.all(Array.from({ length: Math.min(4, bilinmeyen.length) }, async () => {
-    while (!DAYANDI()) { const i = rn++; if (i >= bilinmeyen.length) return; const r = await (/2$/.test(bilinmeyen[i]) ? fizikiAd(bilinmeyen[i]) : reyestr(bilinmeyen[i])).catch(() => null); if (r && r.ad) adlar[bilinmeyen[i]] = r.ad; }
+    while (!DAYANDI()) { const i = rn++; if (i >= bilinmeyen.length) return; const r = await reyestr(bilinmeyen[i]).catch(() => null); if (r && r.ad) adlar[bilinmeyen[i]] = r.ad; }
   }));
   const setirler = [], ygb = [], tapilmayan = [];
   for (const b of bey) {
