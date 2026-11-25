@@ -55,9 +55,9 @@ function _styles() {
   const xf = (n, f, fi, b, al) => `<xf numFmtId="${n}" fontId="${f}" fillId="${fi}" borderId="${b}" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment ${al || ""}/></xf>`;
   const xfs = [
     xf(0, 0, 0, 0), xf(0, 1, 2, 1, 'horizontal="center" vertical="center" wrapText="1"'), xf(0, 0, 0, 1, 'vertical="center" wrapText="1"'),
-    xf(0, 0, 0, 1, 'horizontal="center" vertical="center"'), xf(164, 0, 0, 1, 'vertical="center"'), xf(165, 0, 0, 1, 'vertical="center"'),
-    xf(0, 2, 0, 0, 'horizontal="center"'), xf(0, 1, 0, 0), xf(0, 1, 3, 1, 'horizontal="right"'), xf(164, 1, 3, 1),
-    xf(0, 0, 0, 0, 'vertical="top" wrapText="1"'), xf(0, 1, 0, 0, 'horizontal="right"'), xf(0, 0, 0, 1, 'horizontal="right" vertical="center"'),
+    xf(0, 0, 0, 1, 'horizontal="center" vertical="center"'), xf(164, 0, 0, 1, 'horizontal="center" vertical="center"'), xf(165, 0, 0, 1, 'horizontal="center" vertical="center"'),
+    xf(0, 2, 0, 0, 'horizontal="center"'), xf(0, 1, 0, 0), xf(0, 1, 3, 1, 'horizontal="right"'), xf(164, 1, 3, 1, 'horizontal="center"'),
+    xf(0, 0, 0, 0, 'vertical="top" wrapText="1"'), xf(0, 1, 0, 0, 'horizontal="right"'), xf(0, 0, 0, 1, 'horizontal="center" vertical="center"'),
     xf(0, 3, 2, 0, 'horizontal="center" vertical="center" wrapText="1"'), xf(164, 0, 0, 0), xf(165, 0, 0, 0),
     xf(0, 1, 0, 0, 'vertical="top" wrapText="1"'),
   ];
