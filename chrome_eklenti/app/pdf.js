@@ -127,7 +127,7 @@ function _aktSehifeler(q, sat, alc, tip, rekv, miqyas) {
   let sh, y;
   const yeni = () => { sh = new _Sehife(); sehifeler.push(sh); y = _PYUXARI; };
   const sag = _PSOL + _PEN;
-  const sutun = [22, 190, 62, 48, 52, 66, 75.28];  // sütun enləri (cəmi 515,28)
+  const sutun = [22, 211.28, 62, 48, 44, 58, 70];  // sütun enləri (cəmi 515,28): ad sütunu geniş, rəqəm sütunları dar
   const x0 = [_PSOL]; for (const e of sutun) x0.push(x0[x0.length - 1] + e);
   const SZ = 9.5, LH = 12;
   const basliqCedvel = () => {
@@ -170,8 +170,8 @@ function _aktSehifeler(q, sat, alc, tip, rekv, miqyas) {
     sh.yazOrta(orta(0), by, String(i + 1), SZ, false);
     ad.forEach((t, k) => sh.yaz(x0[1] + 4, by + k * LH, t, SZ, false));
     sh.yazOrta(orta(2), by, m.kod, SZ, false); sh.yazOrta(orta(3), by, m.olcu, SZ, false);
-    sh.yazSag(sagK(4), by, String(m.miqdar).replace(".", ","), SZ, false);
-    sh.yazSag(sagK(5), by, fmtQiymet(m.qiymet), SZ, false); sh.yazSag(sagK(6), by, fmt(m.mebleg), SZ, false);
+    sh.yazOrta(orta(4), by, String(m.miqdar).replace(".", ","), SZ, false);
+    sh.yazOrta(orta(5), by, fmtQiymet(m.qiymet), SZ, false); sh.yazOrta(orta(6), by, fmt(m.mebleg), SZ, false);
     y += h;
   }
   const cemi = q.cemi != null ? q.cemi : r2(q.mallar.reduce((a, m) => a + m.mebleg, 0));
@@ -179,7 +179,7 @@ function _aktSehifeler(q, sat, alc, tip, rekv, miqyas) {
   if (y + 3 * 17 > _HV - _PASAGI) { yeni(); }
   for (const [a, b] of yek) {
     sh.dort(x0[5], y, sutun[5], 17, _pAch); sh.dort(x0[6], y, sutun[6], 17, _pAch);
-    sh.yazSag(x0[5] + sutun[5] - 4, y + 12, a, 9.5, true); sh.yazSag(x0[6] + sutun[6] - 4, y + 12, b, 9.5, true);
+    sh.yazSag(x0[5] + sutun[5] - 4, y + 12, a, 9.5, true); sh.yazOrta(x0[6] + sutun[6] / 2, y + 12, b, 9.5, true);
     y += 17;
   }
   y += 22;

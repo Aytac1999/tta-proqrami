@@ -95,10 +95,11 @@ function _sheet(sh) {
   const filt = sh.suzgec && sh.rows.length > 0 ? `<autoFilter ref="A1:${_col(sh.suzgec)}${sh.rows.length}"/>` : "";
   const merge = sh.birlesdir && sh.birlesdir.length ? `<mergeCells count="${sh.birlesdir.length}">${sh.birlesdir.map((m) => `<mergeCell ref="${m}"/>`).join("")}</mergeCells>` : "";
   const fit = sh.sigdir ? `<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>` : "";
-  const setup = sh.sigdir ? `<pageSetup paperSize="9" orientation="portrait" fitToWidth="1" fitToHeight="1"/>` : "";
+  const setup = sh.sigdir ? `<pageSetup paperSize="9" orientation="portrait" fitToWidth="1" fitToHeight="${sh.birSehife ? 1 : 0}"/>` : "";   // eni 1 səhifə, hündürlüyü lazım qədər (çox sətirdə kiçilmir, bir neçə səhifə çıxır)
+  const brk = sh.sehifeSonu ? `<rowBreaks count="1" manualBreakCount="1"><brk id="${sh.sehifeSonu}" max="16383" man="1"/></rowBreaks>` : "";
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${fit}` +
     `<sheetViews><sheetView workbookViewId="0">${pane}</sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/>${cols}` +
-    `<sheetData>${rows}</sheetData>${filt}${merge}<pageMargins left="0.5" right="0.5" top="0.6" bottom="0.6" header="0.3" footer="0.3"/>${setup}</worksheet>`;
+    `<sheetData>${rows}</sheetData>${filt}${merge}<pageMargins left="0.5" right="0.5" top="0.6" bottom="0.6" header="0.3" footer="0.3"/>${setup}${brk}</worksheet>`;
 }
 async function xlsxYarat(sehifeler) { // [{ad, rows, eni, dondur, suzgec, birlesdir, hundur, sigdir}]
   const n = sehifeler.length;
@@ -132,6 +133,15 @@ function terkibSehifeleri(qaimeler) {
   const sh = [{ ad: "Qaimə tərkibi", rows: ana, eni, dondur: true, suzgec: bas.length }];
   return sh;
 }
+function _xSetirSayi(s, eni) {   // söz-söz bölmə ilə təxmini sətir sayı (eni = sütundakı simvol sayı)
+  let n = 1, u = 0;
+  for (const w of String(s || "").split(/\s+/).filter(Boolean)) {
+    let L = w.length;
+    while (L > eni) { n++; L -= eni; u = 0; }   // çox uzun söz özü bölünür
+    if (u && u + 1 + L > eni) { n++; u = L; } else u += (u ? 1 : 0) + L;
+  }
+  return n;
+}
 function aktSehifesi(q, sat, alc, tip, rekv) {
   tip = _tip(tip);
   const no = q.seriya + q.nomre;
@@ -143,7 +153,7 @@ function aktSehifesi(q, sat, alc, tip, rekv) {
   q.mallar.forEach((m, i) => {
     rows.push([{ v: i + 1, s: S.MERKEZ }, { v: m.ad, s: S.METN }, { v: m.kod, s: S.MERKEZ }, { v: m.olcu, s: S.MERKEZ },
       { v: m.miqdar, s: S.SAG }, { v: m.qiymet, s: S.QIYMET }, { v: m.mebleg, s: S.PUL }]);
-    hundur[rows.length] = m.ad.length > 44 ? 32 : 18;
+    hundur[rows.length] = Math.max(1, _xSetirSayi(m.ad, 38)) * 14 + 4;  // uzun ad neçə sətrə bölünürsə, sətir hündürlüyü ona görə (3+ sətirdə yazı kəsilməsin)
   });
   const ilk = 10, son = rows.length;
   const cemi = r2(q.mallar.reduce((a, m) => a + m.mebleg, 0));
@@ -166,7 +176,18 @@ function aktSehifesi(q, sat, alc, tip, rekv) {
     rows.push(row);
   }
   const iri = rows.map((r) => Array.from(r, (c) => (c == null || c === "" ? c : typeof c !== "object" ? { v: c, s: SA[0] } : { ...c, s: SA[c.s || 0] })));
-  return { ad: tip === "protokol" ? "Protokol" : tip === "hesab" ? "Hesab-faktura" : "TTA", rows: iri, eni: [5, 44, 15, 12, 10, 14, 14], hundur: { ...hundur, [b + 1]: 58 }, sigdir: true,
+  // Çox sətirdə imza bloku tək başına son səhifəyə düşməsin: səhifə bölgüsünü simulyasiya edib lazım olsa son 3 mal sətrini imza ilə birlikdə yeni səhifəyə keçiririk
+  const H = { ...hundur, [b + 1]: 58 };
+  const eniler = [5, 44, 15, 12, 10, 14, 14], enPt = eniler.reduce((t, w) => t + (w * 7 + 5) * 0.75, 0);   // sütunların təxmini eni (pt)
+  const SEH = 756 / Math.min(1, 523 / enPt);   // A4 çap sahəsinin hündürlüyü, eninə sığdırma miqyası ilə (cədvəl vahidlərində)
+  let tot = 0; for (let r = 1; r <= iri.length; r++) tot += H[r] || 15;
+  const birSehife = tot <= SEH / 0.9;   // ≤10% əlavə kiçilmə ilə bir səhifəyə sığırsa — bir səhifə; yoxsa normal ölçüdə bir neçə səhifə
+  let cum = 0, sehifeBasi = 1, sehifeSonu = 0;
+  if (!birSehife) {
+    for (let r = 1; r <= iri.length; r++) { const h = H[r] || 15; if (cum + h > SEH) { sehifeBasi = r; cum = 0; } cum += h; }
+    if (sehifeBasi > 1 && sehifeBasi > son - 2 && son - 3 > ilk) sehifeSonu = son - 3;   // imza tək qalmasın: son 3 mal sətri imza ilə birlikdə yeni səhifəyə
+  }
+  return { birSehife, sehifeSonu, ad: tip === "protokol" ? "Protokol" : tip === "hesab" ? "Hesab-faktura" : "TTA", rows: iri, eni: [5, 44, 15, 12, 10, 14, 14], hundur: { ...hundur, [b + 1]: 58 }, sigdir: true,
     birlesdir: ["A1:C1", "A3:G3", "A5:G8", `A${b + 1}:C${b + 1}`, ...(tip === "hesab" ? [] : [`D${b + 1}:G${b + 1}`])] };
 }
 
