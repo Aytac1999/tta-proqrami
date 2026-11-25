@@ -313,7 +313,7 @@
   }));
 
   $("#bas-risk").addEventListener("click", () => isle("risk", async () => {
-    const voenler = [...new Set(($("#b-risk [data-f=riskvoen]").value || "").split(/[\s,;]+/).filter(Boolean))];
+    const voenler = [...new Set(($("#b-qaime [data-f=riskvoen]").value || "").split(/[\s,;]+/).filter(Boolean))];
     if (!voenler.length) return netice([["x", "VÖEN-i yazın (hər biri 10 rəqəm)."]]);
     const r = await riskSiyahisi(voenler, (i, n) => { progress(i, n); netice([["", `Yoxlanılır … ${i}/${n}`]]); });
     const riskli = r.filter((n) => n.risky), yox = r.filter((n) => n.risky === null);
